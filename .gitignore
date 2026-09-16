@@ -1,0 +1,14 @@
+/lib/.deps
+/sim/work
+/sim/*/work
+/log
+/sim/net/work_phy
+/tb/vectors
+/lib/model/__pycache__
+/rtl/work
+/sim/work_core
+/sim/net/work*
+/lib/host/__pycache__
+/lib/host/tests/__pycache__
+/fpga/build
+/fpga/*.lock

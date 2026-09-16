@@ -1,0 +1,83 @@
+m255
+K4
+z2
+!s11f vlog 2020.4 2020.10, Oct 13 2020
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z0 dd:/Workspace/Modelsim/260902_MEMS_Array/rtl/board
+vmems_array_pg2l200h
+DXx6 sv_std 3 std 0 22 9oUSJO;AeEaW`l:M@^WG92
+!s110 1789501680
+!i10b 1
+!s100 za[h=Z3KW;Gn6;0A@gjMa2
+Z1 !s11b Dg1SIo80bB@j0V0VzS_@n1
+IM1o>Ji;@@K><XGVV3<n<;1
+S1
+R0
+w1789501148
+8d:\Workspace\Modelsim\260902_MEMS_Array\rtl\board\mems_array_pg2l200h.sv
+Fd:\Workspace\Modelsim\260902_MEMS_Array\rtl\board\mems_array_pg2l200h.sv
+Fcalibration_coeff.svh
+!i122 0
+L0 3 63
+Z2 VDg1SIo80bB@j0V0VzS_@n1
+Z3 OL;L;2020.4;71
+r1
+!s85 0
+31
+!s108 1789501680.000000
+!s107 calibration_coeff.svh|d:\Workspace\Modelsim\260902_MEMS_Array\rtl\board\mems_array_pg2l200h.sv|
+!s90 -nologo|-work|work|d:\Workspace\Modelsim\260902_MEMS_Array\rtl\board\mems_array_pg2l200h.sv|
+!i113 0
+Z4 o-nologo -work work -L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+Z5 tCvgOpt 0
+vpango_audio_gpll
+Z6 !s110 1789501706
+!i10b 1
+!s100 l0R=58k9]ZaGc9H]=C5_L1
+R1
+If>TL@LIO]YAPh56abg=Mc2
+R0
+Z7 w1789501178
+Z8 8d:\Workspace\Modelsim\260902_MEMS_Array\rtl\board\pango_board_clocks.v
+Z9 Fd:\Workspace\Modelsim\260902_MEMS_Array\rtl\board\pango_board_clocks.v
+!i122 2
+L0 48 37
+R2
+R3
+r1
+!s85 0
+31
+Z10 !s108 1789501706.000000
+!s107 d:\Workspace\Modelsim\260902_MEMS_Array\rtl\board\pango_board_clocks.v|
+Z11 !s90 -nologo|-work|work|d:\Workspace\Modelsim\260902_MEMS_Array\rtl\board\pango_board_clocks.v|
+!i113 0
+R4
+R5
+vpango_board_clocks
+R6
+!i10b 1
+!s100 [od0@R__2>TanYTRj5neT2
+R1
+IeDOolfgUz]Bd]HWzY1IIY2
+R0
+R7
+R8
+R9
+!i122 2
+L0 4 41
+R2
+R3
+r1
+!s85 0
+31
+R10
+Z12 !s107 d:\Workspace\Modelsim\260902_MEMS_Array\rtl\board\pango_board_clocks.v|
+R11
+!i113 0
+R4
+R5

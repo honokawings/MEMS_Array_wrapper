@@ -1,0 +1,30 @@
+{
+  "sample_rates_hz": {
+    "pdm": 3072000,
+    "cic": 384000,
+    "fir1": 96000,
+    "pcm": 48000
+  },
+  "passband_hz": [
+    20,
+    16000
+  ],
+  "passband_ripple_db": 1.2107388781627647e-06,
+  "alias_rejection_db": 135.15573381691772,
+  "alias_scan_step_hz": 5.859375,
+  "coefficient_complex_error_max": 1.0376754155066828e-08,
+  "coefficient_phase_error_deg": 9.627509695551211e-14,
+  "common_group_delay_pdm_periods": 2285.5,
+  "common_group_delay_us": 743.9778645833334,
+  "impulse_length_pdm_periods": 4568,
+  "discard_pcm_frames": 96,
+  "numeric_error_dbfs_rms": -146.32917145255044,
+  "numeric_error_dbfsa_20_16k": -149.39619030295114,
+  "internal_q30_error_dbfs_rms": -186.75089953536002,
+  "second_order_white_error_alias_dbfsa": -175.9652856778766,
+  "estimated_numeric_snr_loss_db": 0.0003148832336838497,
+  "estimated_numeric_plus_alias_snr_loss_db": 0.0003155770175891552,
+  "tone_record_pdm_periods": 262144,
+  "tone_record_pcm_frames": 4096,
+  "scope": "Digital response and same-input fixed/float error; acoustic SNR is not measured."
+}

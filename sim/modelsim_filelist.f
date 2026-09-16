@@ -1,0 +1,11 @@
++incdir+../rtl
+../rtl/pdm_capture.sv
+../rtl/cic_decimator.sv
+../rtl/fir_decimator.sv
+../rtl/pcm_calibration.sv
+../rtl/pcm_frame_fifo.sv
+../rtl/mems_array_top.sv
+../tb/tb_capture.sv
+../tb/tb_calibration.sv
+../tb/tb_fifo.sv
+../tb/tb_array.sv

@@ -1,0 +1,106 @@
+# Core-board oscillators and source-synchronous gigabit receive clock.
+create_clock -name sys27 -period 37.037037037 [get_ports {sys_clk_27}]
+create_clock -name ref125 -period 8.000 [get_ports {sys_clk_125_p}]
+create_generated_clock -name eth250 -source [get_ports {sys_clk_125_p}] -multiply_by 2 [get_pins {clocks.u_pll_eth.u_gpll/CLKOUT0}]
+create_generated_clock -name eth125 -source [get_pins {clocks.u_pll_eth.u_gpll/CLKOUT0}] -divide_by 2 [get_pins {clocks.u_eth_div/CLKDIVOUT}]
+create_clock -name rx125 -period 8.000 [get_ports {PHY0_RXC}]
+create_generated_clock -name audio96 -source [get_ports {sys_clk_27}] -multiply_by 32 -divide_by 9 [get_pins {clocks.u_pll_96.u_gpll/CLKOUT0}]
+create_generated_clock -name audio122 -source [get_pins {clocks.u_pll_96.u_gpll/CLKOUT0}] -multiply_by 32 -divide_by 25 [get_pins {clocks.u_pll_audio.u_gpll/CLKOUT0}]
+set_clock_uncertainty 0.150 [get_clocks {sys27 ref125 eth250 eth125 rx125 audio96 audio122}]
+
+# Independent-clock crossings: bound every data path to less than one fast
+# period, including Gray pointers and the held ARP mailbox payload. Do not
+# use broad asynchronous clock groups: they would override this routing bound.
+set_max_delay 7.500 -datapath_only -from [get_clocks audio122] -to [get_clocks eth125]
+set_max_delay 7.500 -datapath_only -from [get_clocks eth125] -to [get_clocks audio122]
+set_max_delay 7.500 -datapath_only -from [get_clocks rx125] -to [get_clocks eth125]
+set_max_delay 7.500 -datapath_only -from [get_clocks eth125] -to [get_clocks rx125]
+set_false_path -hold -from [get_clocks audio122] -to [get_clocks eth125]
+set_false_path -hold -from [get_clocks eth125] -to [get_clocks audio122]
+set_false_path -hold -from [get_clocks rx125] -to [get_clocks eth125]
+set_false_path -hold -from [get_clocks eth125] -to [get_clocks rx125]
+
+# The only asynchronous reset exceptions are reset-release synchronizer pins.
+# All functional logic uses the synchronously released destination reset.
+set_false_path -from [get_ports reset_n]
+set_input_delay -clock audio122 -max 0.000 [get_ports reset_n]
+set_input_delay -clock audio122 -min 0.000 [get_ports reset_n]
+set_false_path -to [get_pins -hierarchical {*release_pipe*/C *tx_release*/C *rx_release*/C *release_audio*/C *rx_reset_release*/C}]
+set_false_path -to [get_pins {clocks.u_pll_96.u_gpll/RST clocks.u_pll_audio.u_gpll/RST clocks.u_pll_eth.u_gpll/RST clocks.u_eth_div/RST_N}]
+
+# The PHY delays RXC with respect to RXD. A virtual clock locates data changes
+# halfway between real RXC edges; +/-1 ns includes the 1.2 ns PHY setup/hold
+# minima and +/-0.2 ns PCB skew. This explicitly pairs setup launch2->capture4
+# and hold launch2->capture0, including actual FPGA clock and data insertion.
+create_clock -name rx_data_launch -period 8.000 -waveform {2.000 6.000}
+set_input_delay -clock rx_data_launch -max 1.000 [get_ports {PHY0_RXD[*] PHY0_RXCTRL}]
+set_input_delay -clock rx_data_launch -min -1.000 [get_ports {PHY0_RXD[*] PHY0_RXCTRL}]
+set_input_delay -clock rx_data_launch -clock_fall -add_delay -max 1.000 [get_ports {PHY0_RXD[*] PHY0_RXCTRL}]
+set_input_delay -clock rx_data_launch -clock_fall -add_delay -min -1.000 [get_ports {PHY0_RXD[*] PHY0_RXCTRL}]
+
+# TX source-side contract: six physical outputs, including forwarded TXC,
+# share one zero reference. RTL8211F enables internal TX delay via MDIO.
+# Required FPGA same-edge physical spread is <=0.300 ns; adding the external
+# PCB skew budget <=0.200 ns meets the PHY's undelayed-source +/-0.500 ns.
+# PDS raw MaxSkew includes +/-0.050 ns of common source jitter. The 0.400 ns
+# raw bound is NOT the acceptance limit: check_tx_source must verify both
+# common terms, remove them once, and independently enforce physical <=0.300.
+# It also checks the permitted TXC edge polarities and output duty cycle.
+create_clock -name tx_pad_ref -period 8.000
+set_clock_uncertainty 0.000 [get_clocks tx_pad_ref]
+set_output_delay -clock tx_pad_ref -max 0.000 [get_ports {PHY0_TXC PHY0_TXD[*] PHY0_TXCTRL}]
+set_output_delay -clock tx_pad_ref -min 0.000 [get_ports {PHY0_TXC PHY0_TXD[*] PHY0_TXCTRL}]
+set_output_delay -clock tx_pad_ref -clock_fall -add_delay -max 0.000 [get_ports {PHY0_TXC PHY0_TXD[*] PHY0_TXCTRL}]
+set_output_delay -clock tx_pad_ref -clock_fall -add_delay -min 0.000 [get_ports {PHY0_TXC PHY0_TXD[*] PHY0_TXCTRL}]
+set_max_skew -rise_from [get_clocks eth125] -to [get_ports {PHY0_TXC PHY0_TXD[*] PHY0_TXCTRL}] 0.400
+set_max_skew -fall_from [get_clocks eth125] -to [get_ports {PHY0_TXC PHY0_TXD[*] PHY0_TXCTRL}] 0.400
+# An explicit internal path bound replaces an artificial virtual-clock setup
+# relation. The full clock-tree/CPPR paths remain in PDS's separate skew audit.
+set_max_delay 2.500 -datapath_only -from [get_clocks eth125] -to [get_ports {PHY0_TXC PHY0_TXD[*] PHY0_TXCTRL}]
+
+# PDM is oversampled. Actual valid-bit capture is 17 audio clocks (138.3 ns)
+# after the launch edge after accounting for the two synchronization stages.
+# The budget is 100 ns microphone tCO + 20 ns external propagation + at most
+# 4 ns FPGA clock-pad delay + 5 ns input-pad-to-synchronizer delay.
+# Base total =129 ns; the routed audit also adds launch clock-branch delay,
+# uncertainty and rounding guard, requiring the sum <138.346 ns.
+# Input delay zero below is a reference for measuring ONLY the FPGA input
+# path. It does NOT model zero external propagation. PDS 2022.2-SP6.4 raises
+# Internal-1001 when large source-relative delays and datapath_only combine;
+# the 120 ns external budget is therefore checked separately above.
+# An independent zero-phase reference also avoids a PDS bug subtracting the
+# cascaded PLL source insertion from a port-starting datapath-only check.
+create_clock -name async_pad_ref -period 8.000
+create_generated_clock -name pdm3072 -source [get_pins {clocks.u_pll_audio.u_gpll/CLKOUT0}] -divide_by 40 [get_ports {mic_clk[0]}]
+set_input_delay -clock async_pad_ref -max 0.000 [get_ports {pdm_data[*]}]
+set_input_delay -clock async_pad_ref -min 0.000 [get_ports {pdm_data[*]}]
+set_max_delay 5.000 -datapath_only -from [get_ports {pdm_data[*]}] -to [get_cells -hierarchical {*data_meta*}]
+set_false_path -hold -from [get_ports {pdm_data[*]}] -to [get_cells -hierarchical {*data_meta*}]
+set_output_delay -clock audio122 -max 0.000 [get_ports {mic_clk[1] mic_clk[2] mic_clk[3]}]
+set_output_delay -clock audio122 -min 0.000 [get_ports {mic_clk[1] mic_clk[2] mic_clk[3]}]
+set_max_delay 4.000 -datapath_only -to [get_ports {mic_clk[*]}]
+set_false_path -hold -to [get_ports {mic_clk[*]}]
+
+# Clause 22 control: PHY data is valid within 300 ns of MDC rising; it is
+# sampled near the next falling edge 504 ns later through two FFs.
+create_generated_clock -name mdc992k -source [get_pins {clocks.u_eth_div/CLKDIVOUT}] -divide_by 126 [get_ports PHY0_MDC]
+# As for PDM, zero-reference input delay + 7.5 ns bound measures the FPGA
+# portion; external 300 ns + synchronizer16 ns + this7.5 ns is <504 ns.
+set_input_delay -clock async_pad_ref -max 0.000 [get_ports PHY0_MDIO]
+set_input_delay -clock async_pad_ref -min 0.000 [get_ports PHY0_MDIO]
+set_max_delay 7.500 -datapath_only -from [get_ports PHY0_MDIO] -to [get_cells -hierarchical {*mdio_meta*}]
+set_false_path -hold -from [get_ports PHY0_MDIO] -to [get_cells -hierarchical {*mdio_meta*}]
+set_output_delay -clock mdc992k -max 12.000 [get_ports PHY0_MDIO]
+set_output_delay -clock mdc992k -min -12.000 [get_ports PHY0_MDIO]
+# MDC is transaction gated and may restart at any 125 MHz phase. Output data
+# and OE change only on its falling edge. Bound their physical path to 8 ns
+# (20 ns total minus 12 ns external setup) rather than assuming every 125 MHz
+# launch edge can change MDIO. RTL guarantees the remaining 504 ns window.
+set_max_delay 20.000 -datapath_only -to [get_ports PHY0_MDIO]
+set_false_path -hold -to [get_ports PHY0_MDIO]
+set_max_delay 7.500 -datapath_only -to [get_ports PHY0_MDC]
+set_false_path -hold -to [get_ports PHY0_MDC]
+set_output_delay -clock eth125 -max 0.000 [get_ports RSTN_OUT]
+set_output_delay -clock eth125 -min 0.000 [get_ports RSTN_OUT]
+set_max_delay 20.000 -datapath_only -to [get_ports RSTN_OUT]
+set_false_path -hold -to [get_ports RSTN_OUT]

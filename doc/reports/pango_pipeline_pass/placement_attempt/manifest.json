@@ -1,0 +1,39 @@
+{
+  "status": "FAIL",
+  "requested_stage": "report_timing",
+  "start_stage": "compile",
+  "started_at": "2026-09-16T04:07:45.393941+08:00",
+  "device": "PG2L200H-6-FBB676",
+  "source_sha256": {
+    "rtl/board/mems_array_pg2l200h.sv": "bb57875beefbc605427e7cd2bafd6cc246ed16333f8babece26877cdab66f88a",
+    "rtl/board/pango_board_clocks.v": "59bf72c4dd613a52b4e2ab5affdb928d65e8e41cbe2d32e7cd4b56724447f144",
+    "rtl/board/pango_rgmii_io.v": "1b3540df658cc72d86734344fc95d067c39fade4852ac06b6ea9b51a9a1b764e",
+    "rtl/cic_decimator.sv": "0926c724154af794d70d7bfcda81652bbad52aaf90df48e1fdecfa3914930f46",
+    "rtl/fir_decimator.sv": "cc2e61f42f94a4550e858f45f4c23e17f89105c6ddd4e1629bbd1cc75bcdad28",
+    "rtl/mems_array_top.sv": "53356d3a8673b50e2f79fbee349e2e071f92771712252a88044339b986264244",
+    "rtl/net/async_sample_fifo.sv": "a71b88f99c698fe1195e1dd7a990eef68751560280c9127a17dd29e0430940fb",
+    "rtl/net/ethernet_arp_rx.sv": "53bc82a88061dc9373fe0001e5ebcb6498eec9ece7bdc97b8259401aa592e905",
+    "rtl/net/ethernet_udp_engine.sv": "a24d63689d8eb4263654054e2861107fef7bcff68be6aa9fc5f26e9595590838",
+    "rtl/net/mdio_clause22.sv": "d134274442fc8fe5a9347b528f302bb74353e7858ed3bba4efcd939494225b46",
+    "rtl/net/mems_ethernet_core.sv": "9dd462f83a5ad9739c633c1a9639b757b85a830cf6d6fdcfbd31fcd0ddbc1399",
+    "rtl/net/pcm_udp_packetizer.sv": "0d18ab08656374122594d515a04c2a4af34d173604cb1e93b5a0f6adf41ebe7b",
+    "rtl/net/reset_release.sv": "1f4df36f44cf875c13e063fe9579f470297a584300d167dbf2144f40636423c3",
+    "rtl/net/rtl8211f_manager.sv": "02106d48be24c72dcfab1f669856864185a182d48bb2f815789fc0c643549ef3",
+    "rtl/pcm_calibration.sv": "eef99e042691f6f23f9abaeb273a8f4ddc6a65c8b6898b446274ca0820c56926",
+    "rtl/pcm_frame_fifo.sv": "281233c7bec2f90e0b12574a9ad3c0f92f671af1d0f68804b8c18b1d1b296aa6",
+    "rtl/pdm_capture.sv": "4b3af689f1be17b4479b7453c902d0ffb85d2f4b63f4c0e529c2ddc6d290d4ff",
+    "rtl/board/calibration_coeff.svh": "e92df8d6ca0e26a873048d75a3a6ccb7b975a594082c1437afb9e278634e70c7",
+    "rtl/fir1_coeff.svh": "e4c1c05149524f523ffe87f5851f0dfcddb9d5934ecc2fcbba89acbe1f1304dc",
+    "rtl/fir2_coeff.svh": "8ff28ab11966f5187a33ba902672017cb1f89bcbf8b4108c5d1b6c6856295045",
+    "fpga/constraints/board_pins.fdc": "e26d51f62020a87ca44e2d9ad31c9a8688129831c784cd6abecd58bcb923b059",
+    "fpga/constraints/timing.fdc": "00700c749ddd70ae9a34bdf54bc128210132c2892a052054e96aaf6c4f411ab0",
+    "fpga/scripts/build.py": "bf4470eb18189cf14859a7a6f058b98fbac5bca1257eebaf8c8179e796817882"
+  },
+  "clock_hz": {
+    "audio": 122880000,
+    "ethernet": 125000000
+  },
+  "exit_code": 4294967295,
+  "sources_unchanged": false,
+  "completed_at": "2026-09-16T04:45:56.122446+08:00"
+}
