@@ -42,6 +42,7 @@ class CaptureWriter:
         self.packet_count = 0
         self.frame_count = 0
         self.flagged_packets = 0
+        self.selftest_packets = 0
         self.closed = False
 
     def write(self, payload: bytes, source: tuple[str, int], arrival_ns: int) -> None:
@@ -57,7 +58,8 @@ class CaptureWriter:
         self.frames_file.write(''.join(lines))
         self.packet_count += 1
         self.frame_count += 3
-        self.flagged_packets += bool(packet.flags)
+        self.flagged_packets += bool(packet.flags & 0x2F)
+        self.selftest_packets += bool(packet.flags & 0x10)
 
     def close(self, capture_stats: dict | None = None) -> dict:
         if self.closed:
@@ -72,7 +74,8 @@ class CaptureWriter:
                   'pcm_file': self.pcm_path.name, 'metadata_file': self.frames_path.name,
                   'saved_packets': self.packet_count, 'saved_frames': self.frame_count,
                   'saved_pcm_bytes': self.frame_count * PCM_FRAME_BYTES,
-                  'flagged_packets': self.flagged_packets, 'streams': self.tracker.summary(),
+                  'flagged_packets': self.flagged_packets, 'selftest_packets': self.selftest_packets,
+                  'streams': self.tracker.summary(),
                   'arrival_order_preserved': True, 'gaps_filled': False,
                   'os_socket_drop_count': None,
                   'missing_count_scope': 'first observed through highest observed per source/epoch; reordered arrivals close gaps',

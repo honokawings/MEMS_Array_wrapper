@@ -9,7 +9,8 @@ LOG=ROOT/'log/full_regression'
 def source_hashes():
     files=[]
     for folder in ['rtl','tb','lib/model','lib/cmodel','lib/host','sim']:
-        files.extend(p for p in (ROOT/folder).rglob('*') if p.suffix in {'.v','.sv','.svh','.py','.cpp','.do','.ps1','.bat','.f'}
+        files.extend(p for p in (ROOT/folder).rglob('*') if p.suffix in {'.v','.sv','.svh','.py','.cpp','.do','.ps1','.bat','.f','.bin'}
+            and (p.suffix != '.bin' or folder == 'lib/host')
             and not any(part.startswith('work') or part=='__pycache__' for part in p.relative_to(ROOT).parts))
     return {p.relative_to(ROOT).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(set(files))}
 
@@ -19,7 +20,7 @@ def write_report(result):
         'ethernet':'Ethernet / ARP / IPv4 / UDP','transport':'异步 FIFO 与 PCM 打包',
         'boot':'板级校准启动与复位边界','core':'PDM 引脚到线上 UDP 完整链路',
         'host':'上位机协议、文件与 UDP 接收','host_rtl':'真实 RTL 数据包与 Cmodel 样本比较',
-        'board':'Pango 厂商 PLL 与 DDR 原语'}
+        'system_uart':'UART、MDIO、ARP、UDP 集成诊断','board':'Pango 厂商 PLL 与 DDR 原语','selftest':'按键、LED、内部 PDM 自测与线上样本校验'}
     rows='\n'.join(f"| {labels[name]} | PASS | {item['seconds']:.3f} s |" for name,item in result['steps'].items())
     host=json.loads((LOG/'host_rtl.log').read_text(encoding='utf-8'))
     model_scope='复用此前已通过Python/C++逐位比对的参考向量' if result['models_reused'] else '重新生成系数、性能报告及Python/C++参考向量'
@@ -39,7 +40,7 @@ def write_report(result):
 
 本次上位机解析真实RTL输出 **{host['packets']} 个UDP包、{host['frames']} 个采样帧、{host['samples_compared']} 个通道样本**，全部逐位一致。payload SHA-256：`{host['payload_sha256']}`。
 
-第一会话按生产速率连续发送，无输出队列溢出。第二会话故意延迟ARP应答压满有限缓冲，验证整帧丢弃、帧号缺口、溢出状态、断线清空及重新启动。各会话具体包数与缺帧统计见 `log/full_regression/host_rtl.log`。
+前两会话分别延迟 ARP 应答 0.65 ms、2 ms，验证等待期间不采集、ARP 自主重试，以及从第 96 帧开始连续输出且无溢出。第三会话在地址解析完成后人为阻塞发送端，保留整帧丢弃、帧号缺口、溢出状态、断线清空及重新启动的保护验证。各会话具体包数与缺帧统计见 `log/full_regression/host_rtl.log`。
 
 ## 边界覆盖
 
@@ -48,6 +49,7 @@ def write_report(result):
 - 打包与CDC：随机阻塞、Gray指针回绕、64位帧号间隙、24位正负极值、畸形帧恢复和待发送时复位。
 - 板级控制：两条复位链错开3拍时仍完整写入128组非默认校准系数；音频停钟时掉线和PLL失锁重启。
 - 校准运算：20,056个完整乘积的舍入/半LSB边界独立比较，以及实际128通道增益、偏置、饱和和调度异常检查。
+- 自测：真实板级按键切换、内部 PDM 源、128 通道周期预期值、LED、断线重启、故障注入与上位机逐位比较；生产速率稳定段为 16,000 包/秒。自测通过计数与等待时间在仿真中缩短，采样及传输时钟保持生产频率。
 - 厂商模型：音频PLL链产生122.88MHz，网络PLL及单沿分频产生125MHz，并核验RGMII DDR收发与控制编码。厂商原语是否纳入本次运行：{'是' if result['vendor_included'] else '否'}。
 
 本报告证明功能仿真与参考模型一致。实际器件资源、布局布线、时序及位流发布依据单独的 FPGA 实现报告；本报告不代表已经完成实板声学或网络长时间测试。
@@ -70,6 +72,8 @@ def main():
         ('transport',[py,'sim/net/run_transport.py']),
         ('boot',[py,'sim/net/run_boot.py']),
         ('core',[py,'sim/net/run_core.py']),
+        ('selftest',[py,'sim/net/run_selftest.py']),
+        ('system_uart',[py,'sim/net/run_system_uart.py']),
         ('host',[py,'-m','unittest','discover','-s','lib/host/tests','-v']),
         ('host_rtl',[py,'lib/host/receive_pcm.py','--check','log/net_core/payloads.hex','--golden','tb/vectors/expected_pcm.bin'])]
     if not args.skip_vendor:steps.append(('board',ps+['sim/tb_script/board_vendor.ps1']))

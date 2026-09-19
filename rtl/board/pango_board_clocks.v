@@ -8,7 +8,9 @@ module pango_board_clocks (
     input  wire rst_n,
     output wire audio_clk,
     output wire eth_clk,
-    output wire locked
+    output wire locked,
+    output wire monitor_ref_clk, monitor_raw125_clk, monitor_clk96,
+    output wire [2:0] monitor_locks
 );
     wire clk_27_ibuf, clk_125_ibuf, clk_96_raw, clk_96, audio_raw;
     wire eth_250_raw, eth_divided;
@@ -24,9 +26,10 @@ module pango_board_clocks (
     // The board oscillator guarantees only 45..55% duty. Generate 250 MHz
     // then divide on consecutive rising edges so the 125 MHz duty no longer
     // copies the oscillator (or PLL output) high/low asymmetry.
-    // 125 / 1 * 4 * 2 = 1000 MHz VCO; 1000 / 4 = 250 MHz.
-    pango_audio_gpll #(.INPUT_MHZ(125.0), .INPUT_DIV(1),
-                      .FEEDBACK_MULTIPLY(4), .OUTPUT_DIV(4))
+    // PFD=125/4=31.25 MHz, valid for OPTIMIZED bandwidth (10..40 MHz).
+    // 125 / 4 * 16 * 2 = 1000 MHz VCO; 1000 / 4 = 250 MHz.
+    pango_audio_gpll #(.INPUT_MHZ(125.0), .INPUT_DIV(4),
+                      .FEEDBACK_MULTIPLY(16), .OUTPUT_DIV(4))
         u_pll_eth (.clk_in(clk_125_ibuf), .rst(~rst_n),
                    .clk_out(eth_250_raw), .locked(lock_eth));
     // This primitive has asynchronous reset assertion and internal synchronous
@@ -55,6 +58,11 @@ module pango_board_clocks (
                      .clk_out(audio_raw), .locked(lock_audio));
     GTP_CLKBUFG u_audio_buf (.CLKIN(audio_raw), .CLKOUT(audio_clk));
     assign locked = rst_n & lock_96 & lock_audio & lock_eth;
+    // Independent diagnostic taps; PLL outputs/reset sequencing unchanged; Ethernet IDIV/MDIV corrected.
+    GTP_CLKBUFG u_monitor_ref (.CLKIN(clk_27_ibuf), .CLKOUT(monitor_ref_clk));
+    GTP_CLKBUFG u_monitor_raw125 (.CLKIN(clk_125_ibuf), .CLKOUT(monitor_raw125_clk));
+    assign monitor_clk96 = clk_96;
+    assign monitor_locks = {lock_eth, lock_audio, lock_96};
 endmodule
 
 // Direct instantiation of the device primitive keeps synthesis and vendor-model

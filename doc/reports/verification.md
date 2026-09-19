@@ -1,13 +1,13 @@
 # 功能验证报告
 
-生成时间：2026-09-16T09:13:17+08:00。完整回归状态：**PASS**。原始日志为工程 `log/vlog.log`、`log/vsim.log` 与各 UT 的 `.log` 文件，运行摘要及被测源文件 SHA-256 存于 `log/regression.json`。
+生成时间：2026-09-19T21:27:04+08:00。完整回归状态：**PASS**。原始日志为工程 `log/vlog.log`、`log/vsim.log` 与各 UT 的 `.log` 文件，运行摘要及被测源文件 SHA-256 存于 `log/regression.json`。
 
 | UT | 结果 | 实际运行时间 |
 |---|---|---:|
-| tb_calibration | PASS | 1.531 s |
-| tb_fifo | PASS | 1.484 s |
-| tb_array | PASS | 14.985 s |
-| tb_capture | PASS | 2.906 s |
+| tb_calibration | PASS | 1.734 s |
+| tb_fifo | PASS | 1.641 s |
+| tb_array | PASS | 15.718 s |
+| tb_capture | PASS | 3.063 s |
 
 ## 模型与端到端一致性
 

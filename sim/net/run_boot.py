@@ -9,7 +9,7 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 LOG = ROOT / "log" / "net_boot"
-SOURCES = ["rtl/pdm_capture.sv", "rtl/cic_decimator.sv", "rtl/fir_decimator.sv",
+SOURCES = ["rtl/pdm_capture.sv", "rtl/pdm_selftest_source.sv", "rtl/pcm_selftest_checker.sv", "rtl/board_selftest_control.sv", "rtl/cic_decimator.sv", "rtl/fir_decimator.sv",
            "rtl/pcm_calibration.sv", "rtl/pcm_frame_fifo.sv", "rtl/mems_array_top.sv",
            "rtl/net/reset_release.sv", "rtl/net/async_sample_fifo.sv",
            "rtl/net/pcm_udp_packetizer.sv", "rtl/net/ethernet_arp_rx.sv",

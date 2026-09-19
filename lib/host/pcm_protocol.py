@@ -22,7 +22,8 @@ HEADER = struct.Struct('>4sBBBBIHHQII')
 FRAME_ID = struct.Struct('>Q')
 U64_MASK = (1 << 64) - 1
 FLAG_NAMES = ('saturation', 'preprocessor_queue_overflow',
-              'processing_schedule_error', 'packetizer_framing_error')
+              'processing_schedule_error', 'packetizer_framing_error',
+              'selftest_data', 'selftest_mismatch')
 
 
 class ProtocolError(ValueError):
@@ -64,8 +65,10 @@ def decode_payload(payload: bytes) -> Packet:
     for actual, expected, name in checks:
         if actual != expected:
             raise ProtocolError(f'invalid {name}: {actual!r}; expected {expected!r}')
-    if flags & ~0xF:
+    if flags & ~0x3F:
         raise ProtocolError(f'reserved v1 flag bits set: 0x{flags:08x}')
+    if flags & 0x20 and not flags & 0x10:
+        raise ProtocolError('selftest_mismatch requires selftest_data')
     frames = tuple(Frame(FRAME_ID.unpack_from(payload, p)[0], payload[p + 8:p + RECORD_BYTES])
                    for p in range(HEADER_BYTES, PAYLOAD_BYTES, RECORD_BYTES))
     return Packet(seq, epoch, flags, frames)
@@ -155,7 +158,7 @@ class ContinuityTracker:
             continuous = (self.previous_stream == key and self.previous_frame is not None
                           and frame.frame_id == ((self.previous_frame + 1) & U64_MASK))
             records.append({'epoch': packet.epoch, 'packet_sequence': packet.sequence,
-                            'flags': packet.flags, 'frame_id': frame.frame_id,
+                            'flags': packet.flags, 'selftest': bool(packet.flags & 0x10), 'frame_id': frame.frame_id,
                             'record_in_packet': index, 'packet_status': packet_status,
                             'packet_gap_before': packet_gap, 'frame_status': frame_status,
                             'frame_gap_before': frame_gap, 'continuous_with_previous': continuous})

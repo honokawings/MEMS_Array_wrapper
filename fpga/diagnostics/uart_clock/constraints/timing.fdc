@@ -1,0 +1,36 @@
+# Same PLL ratios and physical clock targets as the production image.
+create_clock -name sys27 -period 37.037037037 [get_ports sys_clk_27]
+create_clock -name ref125 -period 8.000 [get_ports sys_clk_125_p]
+create_generated_clock -name audio96 -source [get_ports sys_clk_27] -multiply_by 32 -divide_by 9 [get_pins {clocks.u_pll_96.u_gpll/CLKOUT0}]
+create_generated_clock -name audio122 -source [get_pins {clocks.u_pll_96.u_gpll/CLKOUT0}] -multiply_by 32 -divide_by 25 [get_pins {clocks.u_pll_audio.u_gpll/CLKOUT0}]
+create_generated_clock -name eth250 -source [get_ports sys_clk_125_p] -multiply_by 2 [get_pins {clocks.u_pll_eth.u_gpll/CLKOUT0}]
+create_generated_clock -name eth125 -source [get_pins {clocks.u_pll_eth.u_gpll/CLKOUT0}] -divide_by 2 [get_pins {clocks.u_eth_div/CLKDIVOUT}]
+set_clock_uncertainty 0.150 [get_clocks {sys27 ref125 audio96 audio122 eth250 eth125}]
+# Registered Gray counters cross to 27 MHz. Bound bus routes below one fastest
+# source period; synchronizer-to-synchronizer timing remains fully checked.
+set_max_delay 7.500 -datapath_only -from [get_clocks ref125] -to [get_clocks sys27]
+set_false_path -hold -from [get_clocks ref125] -to [get_clocks sys27]
+set_max_delay 7.500 -datapath_only -from [get_clocks audio96] -to [get_clocks sys27]
+set_false_path -hold -from [get_clocks audio96] -to [get_clocks sys27]
+set_max_delay 7.500 -datapath_only -from [get_clocks audio122] -to [get_clocks sys27]
+set_false_path -hold -from [get_clocks audio122] -to [get_clocks sys27]
+set_max_delay 7.500 -datapath_only -from [get_clocks eth125] -to [get_clocks sys27]
+set_false_path -hold -from [get_clocks eth125] -to [get_clocks sys27]
+# UART command creates an asynchronous virtual key in the audio domain.
+set_max_delay 7.500 -datapath_only -from [get_clocks sys27] -to [get_clocks audio122]
+set_false_path -hold -from [get_clocks sys27] -to [get_clocks audio122]
+# UART RX is asynchronous; only the first-stage input is excepted. No exception between synchronizer stages.
+set_input_delay -clock sys27 -max 0.000 [get_ports uart_rx]
+set_input_delay -clock sys27 -min 0.000 [get_ports uart_rx]
+set_false_path -from [get_ports uart_rx]
+# LOCK is an asynchronous status. Recovery/removal exceptions target only
+# reset-release stages and PLL/divider asynchronous reset controls.
+set_false_path -from [get_pins {clocks.u_pll_96.u_gpll/LOCK clocks.u_pll_audio.u_gpll/LOCK clocks.u_pll_eth.u_gpll/LOCK}]
+set_false_path -to [get_pins -hierarchical {*release_pipe*/C *release_audio*/C}]
+set_false_path -to [get_pins {clocks.u_pll_96.u_gpll/RST clocks.u_pll_audio.u_gpll/RST clocks.u_pll_eth.u_gpll/RST clocks.u_eth_div/RST_N}]
+# UART TX pad delay is bounded well below an 8.68 us bit period.
+set_output_delay -clock sys27 -max 0.000 [get_ports uart_tx]
+set_output_delay -clock sys27 -min 0.000 [get_ports uart_tx]
+set_max_delay 20.000 -datapath_only -to [get_ports uart_tx]
+set_false_path -hold -to [get_ports uart_tx]
+# Four mic clocks and PHY reset are constant low: intentionally no IO delay.

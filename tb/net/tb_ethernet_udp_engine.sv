@@ -5,7 +5,8 @@ module tb_ethernet_udp_engine;
     reg clk=0, rx_clk=0, rx_clock_running=1;
     always #4 clk=~clk;
     always #4.3 if(rx_clock_running) rx_clk=~rx_clk;
-    reg rst_n=0, link_up=0;
+    reg rst_n=0, link_up=0, stream_enable=1;
+    wire peer_ready;
     reg [7:0] tx_payload_data=0;
     reg tx_payload_valid=0, tx_payload_last=0;
     reg [15:0] tx_payload_length=0;
@@ -14,7 +15,7 @@ module tb_ethernet_udp_engine;
     reg gmii_rx_dv=0, gmii_rx_er=0;
     wire [7:0] gmii_txd;
     wire gmii_tx_en, gmii_tx_er;
-    ethernet_udp_engine #(.ARP_RETRY_CYCLES(5000)) dut(.*);
+    ethernet_udp_engine #(.ARP_RETRY_CYCLES(5000)) dut(.debug_status(),.debug_rx(),.*);
 
     byte unsigned payload[0:1471];
     byte unsigned frame[0:1600];
@@ -203,7 +204,9 @@ module tb_ethernet_udp_engine;
         if(reversed_complement(reference_crc)!=32'hcbf43926) fail("independent CRC-32 check vector failed");
         repeat(5) @(negedge clk);
         @(negedge rx_clk);rx_clock_running=0;
-        #1.1;rst_n=1;link_up=1;
+        // ARP must start before any payload, including while capture is off.
+        make_arp(1,1,PM,PI);queue_frame(64);
+        #1.1;rst_n=1;link_up=1;stream_enable=0;
         repeat(10) @(negedge clk);
         if(dut.rx_rst_n || dut.u_arp_rx.state!=0 || dut.u_arp_rx.message_req)
             fail("RX reset released with RX clock stopped");
@@ -217,8 +220,9 @@ module tb_ethernet_udp_engine;
         $display("[TB_DATA] asynchronous global release with stopped RXC: held reset, exactly3 RX edges release PASS");
         repeat(10) @(negedge clk);
         // Unknown peer: hold completed packet until ARP succeeds, retry once.
-        pattern(17,1);make_arp(1,1,PM,PI);queue_frame(64);
-        drive_payload(17,1);await_frames();
+        await_frames();
+        if(peer_ready || tx_payload_ready) fail("unresolved/inactive stream advertised readiness");
+        stream_enable=1;pattern(17,1);drive_payload(17,1);
         make_arp(1,1,PM,PI);queue_frame(64);await_frames();
         // All variants have a valid FCS except the intentional corrupt-FCS case.
         for(i=0;i<12;i=i+1) begin
@@ -268,6 +272,19 @@ module tb_ethernet_udp_engine;
         if(dut.peer_mac!==PM) fail("unrelated ARP replaced fixed-peer entry");
         if(tx_error) fail("tx_error set on valid traffic");
         if(done_count!=9) fail($sformatf("done count %0d expected 9",done_count));
+        // A stream flush aborts UDP while preserving the physical-link peer.
+        // ARP service continues with the stream disabled and no new resolution
+        // is needed before the next complete payload.
+        suppress_abort=1;pattern(1208,17);drive_payload(1208,0);
+        wait(dut.state==2 && dut.body_index==100);
+        @(negedge clk);stream_enable=0;repeat(30)@(negedge clk);
+        if(gmii_tx_en || !peer_ready || tx_payload_ready || tx_error || dut.packet_full)
+            fail("mode flush damaged ARP cache or retained UDP state");
+        suppress_abort=0;
+        make_arp(1,0,48'h102030405062,32'hc0a80a03);queue_frame(64);
+        make_arp(0,1,48'h102030405062,32'hc0a80a03);send_rx(64,-1,0);await_frames();
+        stream_enable=1;pattern(23,19);queue_udp(23);drive_payload(23,0);await_frames();
+        $display("[TB_DATA] autonomous ARP without payload; mode flush retains peer and ARP service PASS");
         // Malformed input: early last, length change, late last, zero/oversize length.
         before_count=checked;
         @(negedge clk);tx_payload_valid=1;tx_payload_length=3;tx_payload_last=1;tx_payload_data=0;
@@ -286,15 +303,18 @@ module tb_ethernet_udp_engine;
         wait(gmii_tx_en);repeat(70) @(negedge clk);link_up=0;
         repeat(30) @(negedge clk);
         if(gmii_tx_en || dut.peer_valid || !tx_error) fail("linkdown did not flush engine");
+        make_arp(1,1,PM,PI);queue_frame(64);
         suppress_abort=0;link_up=1;repeat(10) @(negedge clk);
-        pattern(47,101);make_arp(1,1,PM,PI);queue_frame(64);
+        if(tx_error) fail("new stream retained previous session TX fault");
+        pattern(47,101);
         drive_payload(47,0);await_frames();
         queue_udp(47);make_arp(0,0,PM,PI);send_rx(64,-1,0);await_frames();
         // Partial ingress link loss must also discard buffered bytes.
         @(negedge clk);tx_payload_valid=1;tx_payload_length=20;tx_payload_data=8'ha5;
         @(negedge clk);tx_payload_valid=0;link_up=0;
-        repeat(30) @(negedge clk);link_up=1;repeat(10) @(negedge clk);
-        pattern(21,73);make_arp(1,1,PM,PI);queue_frame(64);
+        repeat(30) @(negedge clk);make_arp(1,1,PM,PI);queue_frame(64);
+        link_up=1;repeat(10) @(negedge clk);
+        pattern(21,73);
         drive_payload(21,0);await_frames();
         // A peer's ARP request both learns its MAC and receives an ARP reply.
         queue_udp(21);make_arp(1,0,PM,PI);queue_frame(64);

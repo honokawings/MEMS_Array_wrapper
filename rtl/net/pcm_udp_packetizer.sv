@@ -4,6 +4,7 @@
 module pcm_udp_packetizer (
     input wire clk,rst_n,
     input wire [31:0] stream_epoch,
+    input wire selftest_mode,selftest_error,
     input wire [23:0] sample_data,
     input wire [6:0] sample_channel,
     input wire [63:0] sample_frame_id,
@@ -118,7 +119,7 @@ module pcm_udp_packetizer (
                         if(frame_index==2) begin
                             state<=SEND;send_index<=0;payload_valid<=0;payload_last<=0;
                             sequence_snapshot<=sequence_number;epoch_snapshot<=stream_epoch;
-                            packet_flags<=aggregate_flags|{28'd0,framing_error,3'd0};
+                            packet_flags<=aggregate_flags|{26'd0,selftest_error,selftest_mode,framing_error,3'd0};
                         end else frame_index<=frame_index+1'b1;
                     end else expected_channel<=expected_channel+1'b1;
                 end

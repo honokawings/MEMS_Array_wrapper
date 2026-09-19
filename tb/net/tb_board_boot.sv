@@ -8,15 +8,44 @@ module tb_board_boot;
     always #4 eth_clk=~eth_clk;
     always #4.2 rx_clk=~rx_clk;
     reg reset_n=0;
-    wire [3:0] mic_clk,txd;
+    wire [7:0] mic_clk;
+    wire [3:0] txd;
     wire txc,txctl,mdc,phy_reset;
     tri1 mdio;
-    mems_array_pg2l200h dut(.sys_clk_27(audio_clk),.sys_clk_125_p(eth_clk),
-        .sys_clk_125_n(~eth_clk),.reset_n(reset_n),.pdm_data(64'd0),
+    mems_array_pg2l200h #(.UART_ENABLE(0)) dut(.sys_clk_27(audio_clk),.sys_clk_125_p(eth_clk),
+        .sys_clk_125_n(~eth_clk),.reset_n(reset_n),.selftest_key_n(1'b1),.led(),.pdm_data(64'd0),
         .mic_clk(mic_clk),.PHY0_RXC(rx_clk),.PHY0_RXCTRL(1'b0),.PHY0_RXD(4'd0),
         .PHY0_TXC(txc),.PHY0_TXCTRL(txctl),.PHY0_TXD(txd),.PHY0_MDC(mdc),
         .PHY0_MDIO(mdio),.RSTN_OUT(phy_reset));
     integer checks=0,boot_writes=0,total_writes=0,starts=0;
+    reg [7:0] host_rxd=0;
+    reg host_dv=0;
+    // Real RX parser/mailbox learning is required before stream release.
+    task automatic learn_peer;
+        reg [7:0] arp[0:63];reg [31:0] crc;reg [47:0] lm,pm;
+        integer i,k;
+        begin
+            lm=48'h020000000128;pm=48'h102030405060;
+            for(i=0;i<64;i++)arp[i]=0;
+            for(i=0;i<6;i++)begin
+                arp[i]=lm>>((5-i)*8);arp[6+i]=pm>>((5-i)*8);
+                arp[22+i]=pm>>((5-i)*8);arp[32+i]=lm>>((5-i)*8);
+            end
+            arp[12]=8'h08;arp[13]=6;arp[15]=1;arp[16]=8'h08;
+            arp[18]=6;arp[19]=4;arp[21]=2;
+            arp[28]=192;arp[29]=168;arp[30]=10;arp[31]=1;
+            arp[38]=192;arp[39]=168;arp[40]=10;arp[41]=2;
+            crc='1;
+            for(i=0;i<60;i++)begin
+                crc=crc^arp[i];
+                for(k=0;k<8;k++)crc=crc[0]?(crc>>1)^32'hedb88320:crc>>1;
+            end
+            crc=~crc;for(i=0;i<4;i++)arp[60+i]=crc>>(8*i);
+            for(i=0;i<8;i++)begin @(negedge rx_clk);host_dv=1;host_rxd=(i==7)?8'hd5:8'h55;end
+            for(i=0;i<64;i++)begin @(negedge rx_clk);host_rxd=arp[i];end
+            @(negedge rx_clk);host_dv=0;
+        end
+    endtask
 
     task automatic check(input bit okay,input string detail);
         begin
@@ -65,6 +94,7 @@ module tb_board_boot;
     endtask
 
     initial begin
+        force dut.rx_data=host_rxd;force dut.rx_dv=host_dv;
         // Non-default values expose a silently dropped channel0 write.
         force dut.cfg_gain=24'sd4000000;
         force dut.cfg_offset=32'sd12345;
@@ -80,9 +110,9 @@ module tb_board_boot;
         check(dut.cfg_channel==0 && boot_writes==0 && !dut.cfg_ready,
               "Delayed core reset lost initial configuration writes");
         release dut.core.audio_rst_n;
-        wait_boot();wait_active();
+        wait_boot();check(!dut.core.acquisition_active,"capture started before ARP");learn_peer();wait_active();
         check(dut.core.stream_epoch==1,"Initial stream epoch must be1");
-        check(mic_clk[0]===mic_clk[1] && mic_clk[1]===mic_clk[2] && mic_clk[2]===mic_clk[3],
+        check(mic_clk==={8{dut.pdm_clock}},
               "Replicated microphone clocks are not identical");
         $display("[TB_DATA] Board/core reset skew3 clocks, nonunity coefficient0..127, calibration before acquisition PASS");
 
@@ -98,6 +128,7 @@ module tb_board_boot;
         check(dut.calibration_done,"Link loss destroyed completed calibration");
         repeat(10) @(negedge eth_clk);
         dut.phy.requested_link=1;
+        repeat(20)@(negedge eth_clk);learn_peer();
         wait(dut.core.eth_stream_rst_n);
         repeat(8) @(negedge eth_clk);
         check(!dut.core.audio_stream_rst_n,"Stopped audio clock released its stream reset");
@@ -117,7 +148,7 @@ module tb_board_boot;
         repeat(10) @(negedge audio_clk);
         check(!dut.calibration_done && dut.cfg_channel==0,"Global reset did not restart calibration boot");
         dut.clocks.test_locked=1;
-        wait_boot();wait_active();
+        wait_boot();learn_peer();wait_active();
         check(total_writes==256,"Global reset did not repeat exactly128 coefficient writes");
         check(dut.core.stream_epoch==1,"Global reset did not reset epoch counter");
         check(!dut.core.processing_error && !dut.core.overflow && !dut.core.framing_error,
@@ -136,7 +167,10 @@ endmodule
 // Physical models only. Clock frequencies are supplied by this testbench;
 // real Pango PLL/DDR timing is verified by the separate vendor-IP simulation.
 module pango_board_clocks(input wire ref_clk_27,ref_clk_125_p,ref_clk_125_n,rst_n,
-    output wire audio_clk,eth_clk,locked);
+    output wire audio_clk,eth_clk,locked,monitor_ref_clk,monitor_raw125_clk,monitor_clk96,
+    output wire [2:0] monitor_locks);
+    assign monitor_ref_clk=ref_clk_27;assign monitor_raw125_clk=ref_clk_125_p;
+    assign monitor_clk96=ref_clk_27;assign monitor_locks={3{locked}};
     reg test_locked=0;
     assign audio_clk=ref_clk_27;
     assign eth_clk=ref_clk_125_p;
@@ -144,7 +178,9 @@ module pango_board_clocks(input wire ref_clk_27,ref_clk_125_p,ref_clk_125_n,rst_
 endmodule
 module rtl8211f_manager(input wire clk,rst_n,mdio_in,
     output wire phy_rst_n,mdc,mdio_out,mdio_oe,
-    output reg ready=0,link_up=0,output wire fault,output wire [4:0] phy_address);
+    output reg ready=0,link_up=0,output wire fault,output wire [4:0] phy_address,
+    output wire [287:0] debug_status);
+    assign debug_status=0;
     reg requested_link=0;
     assign phy_rst_n=rst_n;
     assign mdc=0;assign mdio_out=1;assign mdio_oe=0;assign fault=0;assign phy_address=5;

@@ -20,7 +20,7 @@ TXC、TXCTRL 和四根 TXD 全部为普通输出端点，使用周期 8 ns、相
 
 核心板 U7 型号 `OB3225125MLDB6SI-00`，所属 YSO230LR 系列的厂家输出对称性保证为 45–55%。直接用 ODDR 转发正负沿会叠加 FPGA 输出传播差，已有慢角反例；单纯 `create_clock` 默认 50% 不能证明实板时钟合格。
 
-最终结构为 125 MHz 输入 → GPLL 250 MHz → `GTP_IOCLKDIV_E2` 单上升沿二分频 → BUFG → TX ODDR。检查器从真实网表验证 PLL 比例 I=1、M=4、F=2、O=4、二分频、CE 常 1，以及 TXC 的 D0=1、D1=0；沿着同一实际连接提取 SDF 延迟。两次相邻 250 MHz 上升沿分别产生 TXC 上升/下降，分频前公共路径都使用相同输入极性，不能沿用 XML 中抽象的振荡器下降沿。
+最终结构为 125 MHz 输入 → GPLL 250 MHz → `GTP_IOCLKDIV_E2` 单上升沿二分频 → BUFG → TX ODDR。检查器从真实网表验证 PLL 比例 I=4、M=16、F=2、O=4、OPTIMIZED 带宽、二分频、CE 常 1，以及 TXC 的 D0=1、D1=0；沿着同一实际连接提取 SDF 延迟。2026-09-18 修正旧 I=1/M=4 的 PFD=125 MHz 与 OPTIMIZED 带宽组合不合规问题，新 PFD=31.25 MHz 已通过安装的厂商 IP 校验和独立诊断实板测试。两次相邻 250 MHz 上升沿分别产生 TXC 上升/下降，分频前公共路径都使用相同输入极性，不能沿用 XML 中抽象的振荡器下降沿。
 
 `duty.nominal_model_status` 检查双角实际可达传播延迟形成的名义占空比。所有已知 STA、物理偏差、名义占空比违规都会拒绝工程发布。`duty.required_edgepair_jitter_max_ns` 给出满足 45–55% 所允许的额外边沿对误差上限。
 

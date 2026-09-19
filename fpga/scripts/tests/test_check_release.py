@@ -27,6 +27,20 @@ class ReleaseGateTest(unittest.TestCase):
         self.write('rtl/pdm_capture.sv', 'parameter integer CLOCK_DIV=40, SAMPLE_TICK_UNUSED=0;\nparameter integer SAMPLE_TICK=19;\ndata_meta <= pdm_data;\ndata_sync <= data_meta;\nif (phase == SAMPLE_TICK) high_phase <= data_sync;\n')
         self.write('rtl/mems_array_top.sv', 'pdm_capture #(.STARTUP_CYCLES(STARTUP_CYCLES)) capture(.clk(clk));\n')
         self.write('fpga/scripts/build.py', '# Fixture build script\n')
+        self.write('fpga/scripts/check_pll_parameters.py', '# Fixture PLL validator\n')
+        self.write('rtl/board/pango_board_clocks.v', '// Fixture clocks, not a physical PLL\n')
+        self.write('vendor_rules.tcl', '# Fixture vendor input\n')
+        pll_rows=[]
+        for name,fin,i,m,o in [('u_pll_eth',125.0,4,16,4),('u_pll_96',27.0,1,16,9),('u_pll_audio',96.0,5,16,5)]:
+            pll_rows.append(dict(name=name,input_mhz=fin,idiv=i,mdiv=m,odiv=o,pfd_mhz=fin/i,
+                vco_mhz=fin/i*m*2,output_mhz=fin/i*m*2/o,bandwidth='OPTIMIZED',fdiv=2))
+        pll=dict(status='PASS',negative_control_original_rejected=True,validated_instances=pll_rows,
+            rtl_source=str(self.root/'rtl/board/pango_board_clocks.v'),rtl_sha256=gate.sha(self.root/'rtl/board/pango_board_clocks.v'),
+            validator_sha256=gate.sha(self.root/'fpga/scripts/check_pll_parameters.py'),
+            vendor_source=str(self.root/'vendor_rules.tcl'),vendor_sha256=gate.sha(self.root/'vendor_rules.tcl'))
+        self.put(self.build/'pll_validation.json',json.dumps(pll))
+        self.put(self.build/'vendor_pll_check.log','Fixture vendor check\n')
+        self.put(self.build/'validate_vendor_pll.tcl','# Fixture invocation\n')
         self.write('fpga/scripts/check_pdm_budget.py', '# Mocked helper; not timing evidence\n')
         self.write('fpga/scripts/check_tx_source.py', '# Mocked helper; not timing evidence\n')
         self.write('tb/vectors/expected_pcm.bin', b'\x01\x02\x03')
@@ -164,6 +178,8 @@ class ReleaseGateTest(unittest.TestCase):
                 if kind == 'Setup':
                     for launch, capture in [('audio122', 'eth125'), ('eth125', 'audio122'), ('rx125', 'eth125'), ('eth125', 'rx125')]:
                         lines.append(f'{launch} {capture} 0.150 0.000 0 7')
+                    for launch, capture in gate.UART_CDC_PAIRS:
+                        lines.append(f'{launch} {capture} 0.150 0.000 0 7')
                 if kind in ('Setup', 'Hold'):
                     lines += ['rx_data_launch rx125 0.150 0.000 0 5']
                 if kind == 'Setup':
@@ -190,7 +206,7 @@ Constraints with matching wildcard expressions:
  I: instance core/frontend/capture/data_meta[63:0]
 
  I: The pattern 'pdm_data[*]' in command 'get_ports {{pdm_data[*]}}' match 64 objects below:
-'''+''.join(f' I: port pdm_data[{i}]\n' for i in range(64))+"\n I: The pattern 'pdm_data[*]' in command 'get_ports {pdm_data[*]}' match 64 objects below:\n"+''.join(f' I: port pdm_data[{i}]\n' for i in range(64))+"\n I: The pattern 'mic_clk[*]' in command 'get_ports {mic_clk[*]}' match 4 objects below:\n"+''.join(f' I: port mic_clk[{i}]\n' for i in range(4))
+'''+''.join(f' I: port pdm_data[{i}]\n' for i in range(64))+"\n I: The pattern 'pdm_data[*]' in command 'get_ports {pdm_data[*]}' match 64 objects below:\n"+''.join(f' I: port pdm_data[{i}]\n' for i in range(64))+"\n I: The pattern 'mic_clk[*]' in command 'get_ports {mic_clk[*]}' match 8 objects below:\n"+''.join(f' I: port mic_clk[{i}]\n' for i in range(8))
 
     def database_report(self):
         doc = gate.ET.Element('tables')
@@ -220,6 +236,15 @@ Constraints with matching wildcard expressions:
             text += f'| {name} | {attrs["DIRECTION"].lower()} | {attrs["LOC"]} | {attrs["VCCIO"]} | {attrs["STANDARD"]} |\n'
         return text
 
+    def test_mapped_drive_and_slew_are_checked(self):
+        port='mic_clk[0]'
+        pin_fdc=self.pin_fdc+'define_attribute {p:mic_clk[0]} {PAP_IO_DRIVE} {16}\n'+'define_attribute {p:mic_clk[0]} {PAP_IO_SLEW} {FAST}\n'
+        lines=self.map_report().splitlines()
+        report='\n'.join(line+' 16 | | FAST |' if line.startswith('| '+port+' |') else line for line in lines)+'\n'
+        gate.check_map(report,pin_fdc,self.fdc)
+        for bad in (report.replace(' 16 | | FAST |',' 8 | | FAST |'),report.replace(' 16 | | FAST |',' 16 | | SLOW |')):
+            with self.assertRaises(gate.ReleaseError):gate.check_map(bad,pin_fdc,self.fdc)
+
     def rejected(self, contains):
         with self.assertRaisesRegex(gate.ReleaseError, contains):
             gate.audit(self.args, self.root)
@@ -230,7 +255,7 @@ Constraints with matching wildcard expressions:
         self.assertTrue(result['release_authorized'])
         self.assertEqual(len(result['timing']['summaries']), 10)
         self.assertEqual(result['evidence']['bitstream']['sha256'], gate.sha(self.bit))
-        self.assertEqual(result['mapping']['ports'], 87)
+        self.assertEqual(result['mapping']['ports'], 99)
 
     def test_pre_bit_running_without_unchanged(self):
         self.args.pre_bit = True
@@ -552,6 +577,60 @@ Constraints with matching wildcard expressions:
         with self.assertRaisesRegex(gate.ReleaseError, 'Timing diagnostics require review'):
             gate.review_timing_diagnostics(log, fdc.replace('RST_N', 'WRONG'), path)
 
+    def test_only_exact_pll_lock_notices_are_reviewed(self):
+        path=self.root/'fpga/constraints/timing.fdc'
+        fdc=gate.RESET_CONTROL_EXCEPTION+'\n'+gate.LOCK_STATUS_EXCEPTION+'\n'
+        notices=[f"C: STA-3006: Object '{p}' is not a valid endpoint." for p in sorted(gate.RESET_CONTROL_ENDPOINTS)]
+        notices += [f"C: STA-3005: Object '{p}' is not a valid startpoint." for p in sorted(gate.LOCK_STATUS_STARTPOINTS)]
+        notices += [f'C: STA-3015: [{path}(line number: {i})] No path found for -from -through -to path specification.' for i in (1,2)]
+        log='\n'.join(notices)+'\n'
+        self.assertEqual(len(gate.review_timing_diagnostics(log,fdc,path)),9)
+        with self.assertRaises(gate.ReleaseError):
+            gate.review_timing_diagnostics(log.replace(sorted(gate.LOCK_STATUS_STARTPOINTS)[0],'core/data_register/Q'),fdc,path)
+        with self.assertRaises(gate.ReleaseError):
+            gate.review_timing_diagnostics(log,fdc.replace('/LOCK','/CLKOUT0'),path)
+
+    def test_all_uart_cdc_pairs_need_physical_coverage(self):
+        original=self.rtr.read_text()
+        for launch,capture in gate.UART_CDC_PAIRS:
+            with self.subTest(pair=(launch,capture)):
+                self.put(self.rtr,original.replace(f'{launch} {capture} 0.150 0.000 0 7\n',''))
+                self.rejected('missing bounded UART CDC paths')
+
+    def test_uart_reference_functional_paths_required(self):
+        original=self.rtr.read_text()
+        self.put(self.rtr,original.replace('sys27 sys27 0.150 0.000 0 7\n',''))
+        self.rejected('missing sys27 functional paths')
+
+    def test_unexpandable_uart_pair_requires_both_bounds(self):
+        path=self.rtr.parent/'rtr.db'
+        doc=gate.ET.parse(path)
+        table=doc.getroot().find("./table[@id='check_timing_summary']")
+        row=next(r for r in table.findall('./row') if r.find('./data').text=='unexpandable_clocks')
+        row.findall('./data')[1].text='1'
+        detail=gate.ET.SubElement(gate.ET.SubElement(gate.ET.SubElement(row,'table_container'),'table'),'row')
+        leaf=gate.ET.SubElement(detail,'data')
+        leaf.text='Can not find common multiples between the source clock audio122 and destination clock sys27  within 1000 cycles.'
+        doc.write(path)
+        fdc=''.join(f'set_max_delay 7.500 -datapath_only -from [get_clocks {a}] -to [get_clocks {b}]\nset_false_path -hold -from [get_clocks {a}] -to [get_clocks {b}]\n' for a,b in (('audio122','sys27'),('sys27','audio122')))
+        timing=gate.check_timing(self.rtr.read_text(),'Action report_timing: done')
+        self.assertEqual(gate.check_database(path,timing,fdc)['check_timing']['unexpandable_clocks'],1)
+        with self.assertRaisesRegex(gate.ReleaseError,'Missing UART CDC physical bound'):
+            gate.check_database(path,timing,fdc.replace('7.500','8.000'))
+        leaf.text=leaf.text.replace('audio122','eth125')
+        doc.write(path)
+        with self.assertRaisesRegex(gate.ReleaseError,'Unreviewed unexpandable clock pair'):
+            gate.check_database(path,timing,fdc)
+
+    def test_pll_validation_requires_current_sources_and_correct_pfd(self):
+        data=json.loads((self.build/'pll_validation.json').read_text())
+        gate.check_pll_validation(data,self.root)
+        data['validated_instances'][0]['pfd_mhz']=125.0
+        with self.assertRaises(gate.ReleaseError):gate.check_pll_validation(data,self.root)
+        data=json.loads((self.build/'pll_validation.json').read_text())
+        data['rtl_sha256']='0'*64
+        with self.assertRaises(gate.ReleaseError):gate.check_pll_validation(data,self.root)
+
     def test_pdm_budget_constants_cannot_drift(self):
         timing = {'clocks': gate.parse_clock_summary(self.rtr.read_text())}
         contract = gate.check_pdm_contract(self.root, self.fdc, timing)
@@ -655,6 +734,344 @@ Constraints with matching wildcard expressions:
     def test_changed_executed_flow_script_rejected(self):
         self.put(self.build/'export_slow.tcl', self.export_command('fast'))
         self.rejected('script path/hash mismatch')
+
+    def staged_floorplan_fixture(self):
+        # Synthetic stage evidence exercises binding checks, not PDS timing.
+        template = SCRIPT.parents[1]/'constraints/frontend_floorplan.pcf'
+        self.write('fpga/constraints/frontend_floorplan.pcf', template.read_text())
+        self.mapped = self.build/'device_map'/f'{gate.TOP}_map.adf'
+        self.base_pcf = self.build/'device_map'/f'{gate.TOP}_base.pcf'
+        self.route_pcf = self.build/'device_map'/f'{gate.TOP}.pcf'
+        self.put(self.mapped, b'FIXTURE_NOT_A_MAPPED_DATABASE')
+        base = ''.join('def_port {'+p+'} LOC='+v['LOC']+' VCCIO='+v['VCCIO']+' IOSTANDARD='+v['STANDARD']+'\n'
+                       for p,v in gate.pins_from_fdc(self.pin_fdc).items())
+        self.put(self.base_pcf, base)
+        source = self.root/'fpga/constraints/frontend_floorplan.pcf'
+        self.put(self.route_pcf, self.base_pcf.read_bytes()+b'\n'+source.read_bytes())
+        self.manifest['postmap_constraints'] = {k:gate.sha(p) for k,p in
+            [('mapped_db_sha256',self.mapped),('base_pcf_sha256',self.base_pcf),
+             ('route_pcf_sha256',self.route_pcf),('template_sha256',source)]}
+        self.put(self.build/'build.tcl', '\n'.join(gate.STAGES[:3])+'\n')
+        first = self.manifest['flow_evidence'][0]
+        first.update(stages=list(gate.STAGES[:3]), script_sha256=gate.sha(self.build/'build.tcl'))
+        self.route_command = 'pnr -force_to_run -input_db_file {'+self.mapped.as_posix()+'}'
+        route = 'add_constraint {'+self.route_pcf.as_posix()+'}\n'+self.route_command+'\nreport_timing\n'
+        self.put(self.build/'route.tcl', route)
+        self.manifest['flow_evidence'].insert(1,dict(project='MEMS_Array_route',stages=['pnr','report_timing'],
+            script=(self.build/'route.tcl').relative_to(self.root).as_posix(),script_sha256=gate.sha(self.build/'route.tcl'),
+            exit_code=0,completed_at=self.now.isoformat()))
+        text=self.build_log(gate.STAGES).replace('Executing : pnr successfully.', 'Executing : '+self.route_command+' successfully.')
+        text+=''.join('Executing : '+line+' successfully\n' for line in gate.commands(source.read_text()))
+        self.put(self.build/'build.log',text)
+        self.manifest['source_sha256']=gate.current_build_sources(self.root)
+        self.save_json()
+
+    def test_staged_floorplan_release(self):
+        self.staged_floorplan_fixture()
+        result=gate.audit(self.args,self.root)
+        self.assertTrue(result['release_authorized'])
+        self.assertEqual(len(result['flow_evidence']),5)
+
+    def test_staged_changed_map_rejected(self):
+        self.staged_floorplan_fixture()
+        self.put(self.mapped,b'Another synthesis result')
+        self.rejected('Postmap input hash mismatch: mapped_db')
+
+    def test_staged_pre_bit_is_not_a_release(self):
+        self.staged_floorplan_fixture()
+        self.args.pre_bit=True
+        self.args.bitstream=None
+        self.manifest.update(status='RUNNING')
+        for key in ('sources_unchanged','exit_code','completed_at'):
+            self.manifest.pop(key)
+        self.manifest['flow_evidence'].pop()
+        path=self.build/'build.log'
+        self.put(path,'\n'.join(line for line in path.read_text().splitlines()
+                               if not line.startswith(('Executing : gen_bit_stream','MEMS_PANGO_GEN_BIT_STREAM')))+'\n')
+        self.save_json()
+        self.assertFalse(gate.audit(self.args,self.root)['release_authorized'])
+
+    def test_staged_rehashed_wrong_port_rejected(self):
+        self.staged_floorplan_fixture()
+        source=self.root/'fpga/constraints/frontend_floorplan.pcf'
+        self.put(self.base_pcf,self.base_pcf.read_text().replace('LOC=A1 ', 'LOC=Z999 ',1))
+        self.put(self.route_pcf,self.base_pcf.read_bytes()+b'\n'+source.read_bytes())
+        self.manifest['postmap_constraints'].update(base_pcf_sha256=gate.sha(self.base_pcf),route_pcf_sha256=gate.sha(self.route_pcf))
+        self.save_json()
+        self.rejected('physical PCF pin mismatch')
+
+    def test_staged_pcf_injection_rejected_even_if_rehashed(self):
+        self.staged_floorplan_fixture()
+        self.put(self.route_pcf,self.route_pcf.read_bytes()+b'\nset_false_path -from [all_clocks]\n')
+        self.manifest['postmap_constraints']['route_pcf_sha256']=gate.sha(self.route_pcf)
+        self.save_json()
+        self.rejected('exact generated base')
+
+    def test_staged_omitted_macro_acceptance_rejected(self):
+        self.staged_floorplan_fixture()
+        path=self.build/'build.log'
+        lines=path.read_text().splitlines()
+        index=next(i for i,line in enumerate(lines) if line.startswith('Executing : def_inst_site'))
+        del lines[index]
+        self.put(path,'\n'.join(lines)+'\n')
+        self.rejected('not actually accepted')
+
+    def test_staged_wrong_map_command_rejected(self):
+        self.staged_floorplan_fixture()
+        path=self.build/'build.log'
+        self.put(path,path.read_text().replace(self.route_command,self.route_command.replace('_map.adf','_other.adf')))
+        self.rejected('audited mapped database')
+
+    def test_staged_unselected_physical_constraints_rejected(self):
+        self.staged_floorplan_fixture()
+        path=self.build/'route.tcl'
+        self.put(path,self.route_command+'\nreport_timing\n')
+        self.manifest['flow_evidence'][1]['script_sha256']=gate.sha(path)
+        self.save_json()
+        self.rejected('select the audited physical PCF')
+
+    def placed_iteration_fixture(self):
+        self.staged_floorplan_fixture()
+        self.placed = self.build/'place_route'/f'{gate.TOP}_placed_input.adf'
+        self.put(self.placed,b'FIXTURE_NOT_A_PLACED_DATABASE')
+        self.manifest['postplace_link']={'placed_db_sha256':gate.sha(self.placed)}
+        self.place_command='pnr -place_only -input_db_file {'+self.mapped.as_posix()+'}'
+        place=self.build/'place.tcl'
+        self.put(place,'add_constraint {'+self.route_pcf.as_posix()+'}\n'+self.place_command+'\n')
+        self.manifest['flow_evidence'].insert(1,dict(project='MEMS_Array_place',stages=['place'],
+            script=place.relative_to(self.root).as_posix(),script_sha256=gate.sha(place),
+            exit_code=0,completed_at=self.now.isoformat()))
+        old=self.route_command
+        self.route_command=old.replace(self.mapped.as_posix(),self.placed.as_posix())
+        route=self.build/'route.tcl'
+        self.put(route,route.read_text().replace(old,self.route_command))
+        self.manifest['flow_evidence'][2]['script_sha256']=gate.sha(route)
+        log=self.build/'build.log'
+        text=log.read_text().replace('Executing : '+old+' successfully.',
+            'Executing : '+self.place_command+' successfully.\nExecuting : '+self.route_command+' successfully.')
+        self.put(log,text.replace('MEMS_PANGO_PNR_COMPLETE','MEMS_PANGO_PLACE_COMPLETE\nMEMS_PANGO_PNR_COMPLETE'))
+        self.save_json()
+
+    def test_placed_iteration_release(self):
+        self.placed_iteration_fixture()
+        result=gate.audit(self.args,self.root)
+        self.assertTrue(result['release_authorized'])
+        self.assertEqual(len(result['flow_evidence']),6)
+        self.assertEqual([s['stage'] for s in result['stage_completions']],
+                         ['compile','synthesize','dev_map','place','pnr','report_timing','gen_bit_stream'])
+
+    def test_changed_placement_rejected(self):
+        self.placed_iteration_fixture()
+        self.put(self.placed,b'Different placement')
+        self.rejected('Placement input hash mismatch')
+
+    def test_placed_iteration_pre_bit_not_release(self):
+        self.placed_iteration_fixture()
+        self.args.pre_bit=True
+        self.args.bitstream=None
+        self.manifest.update(status='RUNNING')
+        for key in ('sources_unchanged','exit_code','completed_at'):
+            self.manifest.pop(key)
+        self.manifest['flow_evidence'].pop()
+        log=self.build/'build.log'
+        self.put(log,'\n'.join(line for line in log.read_text().splitlines()
+            if not line.startswith(('Executing : gen_bit_stream','MEMS_PANGO_GEN_BIT_STREAM')))+'\n')
+        self.save_json()
+        self.assertFalse(gate.audit(self.args,self.root)['release_authorized'])
+
+    def test_missing_placement_process_rejected(self):
+        self.placed_iteration_fixture()
+        self.manifest['flow_evidence'].pop(1)
+        self.save_json()
+        self.rejected('completed PDS process evidence')
+
+    def test_placement_without_native_completion_rejected(self):
+        self.placed_iteration_fixture()
+        log=self.build/'build.log'
+        self.put(log,log.read_text().replace('Executing : '+self.place_command+' successfully.\n',''))
+        self.rejected('native successful stage completions')
+
+    def test_place_only_cannot_prove_routing(self):
+        self.placed_iteration_fixture()
+        log=self.build/'build.log'
+        self.put(log,log.read_text().replace(self.route_command,self.route_command.replace('pnr ','pnr -place_only ')))
+        self.rejected('native successful stage completions')
+
+    def test_placement_from_other_map_rejected(self):
+        self.placed_iteration_fixture()
+        log=self.build/'build.log'
+        self.put(log,log.read_text().replace(self.place_command,self.place_command.replace('_map.adf','_old.adf')))
+        self.rejected('audited mapped database')
+
+    def test_route_from_other_placement_rejected(self):
+        self.placed_iteration_fixture()
+        log=self.build/'build.log'
+        self.put(log,log.read_text().replace(self.route_command,self.route_command.replace('_placed_input.adf','_old.adf')))
+        self.rejected('audited placed database')
+
+    def test_placement_without_selected_pcf_rejected(self):
+        self.placed_iteration_fixture()
+        place=self.build/'place.tcl'
+        self.put(place,self.place_command+'\n')
+        self.manifest['flow_evidence'][1]['script_sha256']=gate.sha(place)
+        self.save_json()
+        self.rejected('select the audited physical PCF')
+
+    def test_extra_placement_without_manifest_rejected(self):
+        self.placed_iteration_fixture()
+        del self.manifest['postplace_link']
+        self.save_json()
+        self.rejected('required stages completed once in order')
+
+    def checkpoint_fixture(self):
+        self.placed_iteration_fixture()
+        self.write('fpga/scripts/finalize_route_checkpoint.py', '# Fixture finalizer, not hardware evidence\n')
+        origin = dict(self.manifest, status='FAIL', flow_evidence=self.manifest['flow_evidence'][:2])
+        self.origin_manifest = self.build/'checkpoint_selection/source_manifest.json'
+        self.optimizer_log = self.build/'checkpoint_selection/optimizer.log'
+        self.put(self.origin_manifest, json.dumps(origin))
+        prefix = ''.join('Executing : '+s+' successfully.\nMEMS_PANGO_'+s.upper()+'_COMPLETE\n' for s in gate.STAGES[:3])
+        prefix += 'Executing : '+self.place_command+' successfully.\nMEMS_PANGO_PLACE_COMPLETE\n'
+        prefix += ''.join('Executing : '+line+' successfully\n' for line in gate.commands((self.root/'fpga/constraints/frontend_floorplan.pcf').read_text()))
+        prefix += 'Executing : '+self.route_command+'\nI: Current iteration time: 1\n'
+        prefix += "No hold violation.\nTotal net: 10, route succeed net: 10\nDesign '"+gate.TOP+"' has been routed successfully.\nSaving design to DB.\nAction pnr: Real time elapsed is 1m\nAction pnr: Peak memory pool usage is 10 MB\n"
+        self.put(self.optimizer_log, prefix+'I: Current iteration time: 2\nE: Optional optimizer cancelled\n')
+        self.checkpoint = self.build/'place_route/route_constraint_ite_1'/f'{gate.TOP}_pnr.adf'
+        self.put(self.checkpoint, self.routed.read_bytes())
+        report = self.checkpoint.with_name(gate.TOP+'.rtr')
+        self.put(report, self.timing_report())
+        self.manifest['route_checkpoint_selection'] = dict(iteration=1,
+            source_manifest_sha256=gate.sha(self.origin_manifest), optimizer_log_sha256=gate.sha(self.optimizer_log),
+            routed_db_sha256=gate.sha(self.routed), timing_report_sha256=gate.sha(report),
+            route_script_sha256=gate.sha(self.build/'route.tcl'),
+            finalizer_sha256=gate.sha(self.root/'fpga/scripts/finalize_route_checkpoint.py'))
+        self.timing_command = 'report_timing -input_db_file {'+self.routed.as_posix()+'}'
+        self.put(self.rtr,self.rtr.read_text().replace('| Tcl Command : report_timing', '| Tcl Command : '+self.timing_command+' -force_to_run'))
+        timing_script = self.build/'finalize_timing.tcl'
+        self.put(timing_script, self.timing_command+'\n')
+        self.manifest['flow_evidence'][2].update(project='MEMS_Array_route_selection',stages=['pnr'],execution_kind='completed_checkpoint_selection')
+        self.manifest['flow_evidence'][2].pop('exit_code')
+        self.manifest['flow_evidence'].insert(3,dict(project='MEMS_Array_timing',stages=['report_timing'],exit_code=0,
+            script=timing_script.relative_to(self.root).as_posix(),script_sha256=gate.sha(timing_script),completed_at=self.now.isoformat()))
+        tail = 'MEMS_PANGO_PNR_COMPLETE\nExecuting : '+self.timing_command+' successfully.\nMEMS_PANGO_REPORT_TIMING_COMPLETE\n'
+        tail += ''.join('Executing : '+self.export_command(c)+' successfully.\n' for c in ('slow','fast'))
+        tail += 'Executing : '+self.bit_command()+' successfully.\nMEMS_PANGO_GEN_BIT_STREAM_COMPLETE\n'
+        self.put(self.build/'build.log',prefix+tail)
+        self.save_json()
+
+    def alter_checkpoint_transcript(self, before, after):
+        for path in (self.optimizer_log,self.build/'build.log'):
+            self.put(path,path.read_text().replace(before,after))
+        self.manifest['route_checkpoint_selection']['optimizer_log_sha256']=gate.sha(self.optimizer_log)
+        self.save_json()
+
+    def test_completed_checkpoint_release(self):
+        self.checkpoint_fixture()
+        result=gate.audit(self.args,self.root)
+        self.assertTrue(result['release_authorized'])
+        self.assertEqual(len(result['flow_evidence']),7)
+        self.assertIn('completed PNR iteration 1',result['stage_completions'][4]['successful_command'])
+
+    def test_checkpoint_is_not_optimizer_exit_success(self):
+        self.checkpoint_fixture()
+        self.manifest['flow_evidence'][2]['exit_code']=0
+        self.save_json()
+        self.rejected('project/stage/exit evidence mismatch')
+
+    def test_checkpoint_unrouted_nets_rejected(self):
+        self.checkpoint_fixture()
+        self.alter_checkpoint_transcript('route succeed net: 10','route succeed net: 9')
+        self.rejected('not fully routed')
+
+    def test_checkpoint_without_native_completion_rejected(self):
+        self.checkpoint_fixture()
+        self.alter_checkpoint_transcript("Design '"+gate.TOP+"' has been routed successfully.\n",'')
+        self.rejected('Missing native completed PNR')
+
+    def test_checkpoint_with_error_before_completion_rejected(self):
+        self.checkpoint_fixture()
+        self.alter_checkpoint_transcript('Saving design to DB.','E: Routing error\nSaving design to DB.')
+        self.rejected('build log contains errors')
+
+    def test_checkpoint_changed_origin_hash_rejected(self):
+        self.checkpoint_fixture()
+        self.put(self.optimizer_log,self.optimizer_log.read_text()+'Changed archive\n')
+        self.rejected('origin evidence hash mismatch')
+
+    def test_checkpoint_changed_log_prefix_rejected(self):
+        self.checkpoint_fixture()
+        p=self.build/'build.log';self.put(p,'Edited prefix\n'+p.read_text())
+        self.rejected('not the original completed route prefix')
+
+    def test_checkpoint_other_route_database_rejected(self):
+        self.checkpoint_fixture()
+        self.put(self.routed,b'OTHER_ROUTED_RESULT')
+        self.rejected('not the completed checkpoint')
+
+    def test_checkpoint_from_other_sources_rejected(self):
+        self.checkpoint_fixture()
+        origin=json.loads(self.origin_manifest.read_text());origin['source_sha256']={}
+        self.put(self.origin_manifest,json.dumps(origin))
+        self.manifest['route_checkpoint_selection']['source_manifest_sha256']=gate.sha(self.origin_manifest)
+        self.save_json()
+        self.rejected('not from this full unchanged build')
+
+    def test_checkpoint_original_timing_failure_rejected(self):
+        self.checkpoint_fixture()
+        report=self.checkpoint.with_name(gate.TOP+'.rtr')
+        self.put(report,report.read_text().replace('All Constraints Met.','Constraints NOT Met.'))
+        self.manifest['route_checkpoint_selection']['timing_report_sha256']=gate.sha(report)
+        self.save_json()
+        self.rejected('did not meet its original timing')
+
+    def test_checkpoint_wrong_fresh_report_database_rejected(self):
+        self.checkpoint_fixture()
+        wrong=self.timing_command.replace('_pnr.adf','_other.adf')
+        p=self.build/'finalize_timing.tcl';self.put(p,wrong+'\n')
+        self.manifest['flow_evidence'][3]['script_sha256']=gate.sha(p)
+        p=self.build/'build.log';self.put(p,p.read_text().replace(self.timing_command,wrong))
+        self.save_json()
+        self.rejected('does not use the audited routed database')
+
+    def test_checkpoint_changed_finalizer_rejected(self):
+        self.checkpoint_fixture()
+        self.write('fpga/scripts/finalize_route_checkpoint.py','# changed\n')
+        self.rejected('finalizer changed')
+
+    def test_checkpoint_timing_header_wrong_database_rejected(self):
+        self.checkpoint_fixture()
+        self.put(self.rtr,self.rtr.read_text().replace('_pnr.adf','_wrong.adf'))
+        self.rejected('RTR header does not select')
+
+    def test_checkpoint_filtered_timing_still_rejected(self):
+        self.checkpoint_fixture()
+        self.put(self.rtr,self.rtr.read_text().replace(' -force_to_run',' -force_to_run -from foo'))
+        self.rejected('Unsupported report_timing option')
+
+    def checkpoint_resume_fixture(self):
+        self.checkpoint_fixture()
+        self.failed_checkpoint = self.build/'checkpoint_selection/failed_audit.json'
+        previous = dict(self.manifest,status='FAIL',flow_evidence=self.manifest['flow_evidence'][:6])
+        self.put(self.failed_checkpoint,json.dumps(previous))
+        self.manifest['checkpoint_resume_records']=[dict(manifest=self.failed_checkpoint.relative_to(self.build).as_posix(),sha256=gate.sha(self.failed_checkpoint))]
+        self.save_json()
+
+    def test_checkpoint_resume_keeps_completed_evidence(self):
+        self.checkpoint_resume_fixture()
+        self.assertTrue(gate.audit(self.args,self.root)['release_authorized'])
+
+    def test_checkpoint_resume_archive_tamper_rejected(self):
+        self.checkpoint_resume_fixture()
+        self.put(self.failed_checkpoint,self.failed_checkpoint.read_text()+' ')
+        self.rejected('resume manifest hash mismatch')
+
+    def test_checkpoint_resume_other_route_rejected(self):
+        self.checkpoint_resume_fixture()
+        previous=json.loads(self.failed_checkpoint.read_text());previous['routed_db_sha256']='different'
+        self.put(self.failed_checkpoint,json.dumps(previous))
+        self.manifest['checkpoint_resume_records'][0]['sha256']=gate.sha(self.failed_checkpoint)
+        self.save_json()
+        self.rejected('resume changed completed build evidence')
 
 
 class HelperProcessTest(unittest.TestCase):

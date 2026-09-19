@@ -2,9 +2,11 @@
 // Complete-packet store-and-forward transmitter, 125 MHz GMII, full duplex.
 // Input accepts 1..1472 bytes. Length is repeated on every accepted byte;
 // last must coincide with length. A malformed input is drained through last.
-// link_up is synchronous to clk. Its deassertion flushes the input and TX;
-// the producer must also flush its current packet on link loss.
-// tx_packet_done pulses after the final UDP FCS byte; tx_error is sticky.
+// link_up is the physical link, synchronous to clk. ARP runs without payload.
+// stream_enable independently flushes UDP on acquisition/mode changes while
+// retaining the learned peer and servicing ARP. The producer flushes with it.
+// tx_packet_done pulses after the final UDP FCS byte; tx_error is sticky until
+// a new link/stream session starts. Intentional mode flushes must not poison BIST.
 // IPv4/UDP: RFC 791 / RFC 768; address resolution: RFC 826.
 module ethernet_udp_engine #(
     parameter [47:0] LOCAL_MAC = 48'h020000000128,
@@ -14,14 +16,16 @@ module ethernet_udp_engine #(
     parameter [15:0] PEER_PORT = 16'd5000,
     parameter integer ARP_RETRY_CYCLES = 125000000
 ) (
-    input wire clk, input wire rst_n, input wire link_up,
+    input wire clk, input wire rst_n, input wire link_up, input wire stream_enable,
+    output wire peer_ready,
     input wire [7:0] tx_payload_data, input wire tx_payload_valid,
     output wire tx_payload_ready, input wire tx_payload_last,
     input wire [15:0] tx_payload_length,
     output reg tx_packet_done, output reg tx_error,
     input wire rx_clk, input wire [7:0] gmii_rxd,
     input wire gmii_rx_dv, input wire gmii_rx_er,
-    output reg [7:0] gmii_txd, output reg gmii_tx_en, output wire gmii_tx_er
+    output reg [7:0] gmii_txd, output reg gmii_tx_en, output wire gmii_tx_er,
+    output wire [255:0] debug_status,output wire [127:0] debug_rx
 );
     localparam IDLE=0, PREAMBLE=1, BODY=2, FCS=3, IFG=4;
     localparam UDP=0, ARP_REQUEST=1, ARP_REPLY=2;
@@ -51,7 +55,8 @@ module ethernet_udp_engine #(
     wire [15:0] active_length = write_count == 0 ? tx_payload_length : packet_length;
     wire input_good = length_valid && (write_count == 0 || tx_payload_length == packet_length) &&
                        (tx_payload_last == (write_count == active_length - 1'b1));
-    assign tx_payload_ready = rst_n && link_up && !packet_full;
+    assign peer_ready = rst_n && link_up && peer_valid;
+    assign tx_payload_ready = rst_n && link_up && stream_enable && !packet_full;
     assign gmii_tx_er = 1'b0;
     // The single synchronous read port is prefetched one GMII byte ahead.
     always @* begin
@@ -96,16 +101,57 @@ module ethernet_udp_engine #(
     wire [47:0] message_mac;
     wire [31:0] message_ip;
     reg message_ack;
+    (* async_reg = "true", syn_preserve = 1 *) reg req_meta, req_sync;
+
+    reg [31:0] debug_arp_requests,debug_arp_replies,debug_arp_received;
+    reg [31:0] debug_udp_sent,debug_frames_sent;
+    assign debug_status={{16'b0,peer_mac[47:32]},peer_mac[31:0],debug_frames_sent,
+        debug_udp_sent,debug_arp_received,debug_arp_replies,debug_arp_requests,
+        {20'b0,kind,state,draining,reply_pending,tx_error,packet_full,peer_valid,link_up,gmii_tx_en}};
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            debug_arp_requests<=0;debug_arp_replies<=0;debug_arp_received<=0;
+            debug_udp_sent<=0;debug_frames_sent<=0;
+        end else begin
+            if(req_sync!=message_ack && (!reply_pending || !link_up || message_epoch!=link_epoch) &&
+                link_up && message_epoch==link_epoch) debug_arp_received<=debug_arp_received+1'b1;
+            if(link_up && (kind!=UDP || stream_enable) && state==FCS && fcs_index==3) begin
+                debug_frames_sent<=debug_frames_sent+1'b1;
+                if(kind==UDP)debug_udp_sent<=debug_udp_sent+1'b1;
+                if(kind==ARP_REQUEST)debug_arp_requests<=debug_arp_requests+1'b1;
+                if(kind==ARP_REPLY)debug_arp_replies<=debug_arp_replies+1'b1;
+            end
+        end
+    end
     // rst_n is local to the TX/system domain. PHY RXC is independent and may
     // stop while reset is asserted, so all RX parser/mailbox registers need
     // their own asynchronous assertion and three-clock synchronous release.
     (* syn_preserve = 1 *) reg [2:0] rx_reset_release;
     wire rx_rst_n = rx_reset_release[2];
+    reg [31:0] debug_rx_frames,debug_rx_errors,debug_rx_bytes,debug_rx_cycles;
+    reg debug_rx_active,debug_rx_bad;
+    assign debug_rx={debug_rx_cycles,debug_rx_bytes,debug_rx_errors,debug_rx_frames};
+    always @(posedge rx_clk or negedge rx_rst_n) begin
+        if(!rx_rst_n) begin
+            debug_rx_frames<=0;debug_rx_errors<=0;debug_rx_bytes<=0;debug_rx_cycles<=0;
+            debug_rx_active<=0;debug_rx_bad<=0;
+        end else begin
+            debug_rx_cycles<=debug_rx_cycles+1'b1;
+            debug_rx_active<=gmii_rx_dv;
+            if(gmii_rx_dv) begin
+                debug_rx_bytes<=debug_rx_bytes+1'b1;
+                debug_rx_bad<=gmii_rx_er | (debug_rx_active && debug_rx_bad);
+            end else if(debug_rx_active) begin
+                debug_rx_frames<=debug_rx_frames+1'b1;
+                if(debug_rx_bad || gmii_rx_er)debug_rx_errors<=debug_rx_errors+1'b1;
+                debug_rx_bad<=0;
+            end
+        end
+    end
     always @(posedge rx_clk or negedge rst_n) begin
         if (!rst_n) rx_reset_release <= 3'b000;
         else rx_reset_release <= {rx_reset_release[1:0],1'b1};
     end
-    (* async_reg = "true", syn_preserve = 1 *) reg req_meta, req_sync;
     ethernet_arp_rx #(.LOCAL_MAC(LOCAL_MAC), .LOCAL_IP(LOCAL_IP)) u_arp_rx (
         .rx_clk(rx_clk), .rst_n(rx_rst_n), .link_up(link_up), .link_epoch(link_epoch),
         .gmii_rxd(gmii_rxd), .gmii_rx_dv(gmii_rx_dv), .gmii_rx_er(gmii_rx_er),
@@ -179,6 +225,7 @@ module ethernet_udp_engine #(
         end else begin
             tx_packet_done<=0;
             previous_link<=link_up;
+            if(link_up && !previous_link)tx_error<=0;
             if (previous_link && !link_up) link_epoch<=~link_epoch;
             // req_sync has two synchronizer stages; the bundled fields have
             // already been held for >=2 destination clocks at this sampling edge.
@@ -199,6 +246,12 @@ module ethernet_udp_engine #(
                 peer_valid<=0; peer_mac<=0; reply_pending<=0; retry_count<=0;
             end else begin
                 if (retry_count != 0) retry_count<=retry_count-1'b1;
+                // A mode change cancels only the old UDP payload/session. ARP
+                // state and an in-flight ARP frame belong to the physical link.
+                if (!stream_enable) begin
+                    write_count<=0;packet_length<=0;payload_sum<=0;
+                    packet_full<=0;draining<=0;tx_error<=0;
+                end
                 if (accepted) begin
                     if (draining) begin
                         if (tx_payload_last) begin draining<=0; write_count<=0; payload_sum<=0; end
@@ -217,7 +270,7 @@ module ethernet_udp_engine #(
                 IDLE: begin
                     gmii_tx_en<=0;
                     pre_index<=0; body_index<=0; crc<=32'hffffffff;
-                    if (packet_full && peer_valid) begin
+                    if (stream_enable && packet_full && peer_valid) begin
                         kind<=UDP; frame_mac<=peer_mac; frame_ip_id<=ip_id;
                         ip_checksum<=checksum(ip_header_sum);
                         udp_checksum<=udp_check_value == 0 ? 16'hffff : udp_check_value;
@@ -227,7 +280,7 @@ module ethernet_udp_engine #(
                         kind<=ARP_REPLY; frame_mac<=reply_mac; frame_arp_mac<=reply_mac;
                         frame_arp_ip<=reply_ip; body_length<=60;
                         reply_pending<=0; state<=PREAMBLE;
-                    end else if (packet_full && !peer_valid && retry_count == 0) begin
+                    end else if (!peer_valid && retry_count == 0) begin
                         kind<=ARP_REQUEST; frame_mac<=48'hffffffffffff; frame_arp_mac<=0;
                         frame_arp_ip<=PEER_IP; body_length<=60;
                         retry_count<=ARP_RETRY_CYCLES; state<=PREAMBLE;
@@ -250,7 +303,7 @@ module ethernet_udp_engine #(
                     gmii_tx_en<=1; gmii_txd<=fcs[7:0]; fcs<={8'b0,fcs[31:8]};
                     if (fcs_index == 3) begin
                         state<=IFG; ifg_count<=0;
-                        if (kind == UDP) begin
+                        if (kind == UDP && stream_enable) begin
                             tx_packet_done<=1; ip_id<=ip_id+1'b1;
                             packet_full<=0; write_count<=0; payload_sum<=0;
                         end
@@ -263,6 +316,13 @@ module ethernet_udp_engine #(
                 end
                 default: state<=IDLE;
                 endcase
+                // Finish an inter-frame gap after aborting an old UDP frame.
+                // Do not let the FCS path report completion on the flush edge.
+                if (!stream_enable && kind==UDP &&
+                    (state==PREAMBLE || state==BODY || state==FCS)) begin
+                    state<=IFG;ifg_count<=0;gmii_tx_en<=0;gmii_txd<=0;
+                    tx_packet_done<=0;
+                end
             end
         end
     end

@@ -34,7 +34,8 @@ module rtl8211f_manager #(
     output reg ready,
     output reg link_up,
     output reg fault,
-    output reg [4:0] phy_address
+    output reg [4:0] phy_address,
+    output wire [287:0] debug_status
 );
     localparam [3:0] S_RESET=0, S_SETTLE=1, S_ID1_REQ=2, S_ID1_WAIT=3,
         S_ID2_REQ=4, S_ID2_WAIT=5, S_SCAN_NEXT=6, S_CFG_REQ=7,
@@ -52,6 +53,40 @@ module rtl8211f_manager #(
     reg [15:0] transaction_write;
     reg check_enable;
     reg [15:0] check_mask, check_expected;
+
+    // Read-only diagnostics survive automatic PHY retries, but clear on the
+    // system reset. Read ACK counts exclude writes (Clause22 has no write ACK).
+    reg [15:0] debug_id1,debug_id2,debug_phystatus;
+    reg [31:0] debug_last_meta,debug_last_data,debug_transactions,debug_noacks;
+    reg [31:0] debug_retries,debug_failure;
+    wire cfg_failed=state==S_CFG_WAIT && transaction_done && transaction_read &&
+        (!transaction_ack || (check_enable && ((transaction_data & check_mask)!=check_expected)));
+    wire poll_failed=state==S_POLL_WAIT && transaction_done && !transaction_ack;
+    wire scan_failed=state==S_SCAN_NEXT && phy_address==31 && !zero_match;
+    assign debug_status={16'b0,debug_phystatus,debug_failure,debug_retries,debug_noacks,
+        debug_transactions,debug_last_data,debug_last_meta,{debug_id1,debug_id2},
+        {14'b0,phy_rst_n,fault,link_up,ready,phy_address,cfg_step,state}};
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            debug_id1<=0;debug_id2<=0;debug_phystatus<=0;debug_last_meta<=0;
+            debug_last_data<=0;debug_transactions<=0;debug_noacks<=0;
+            debug_retries<=0;debug_failure<=0;
+        end else begin
+            if(transaction_done) begin
+                debug_transactions<=debug_transactions+1'b1;
+                debug_last_meta<={11'b0,transaction_read,transaction_ack,phy_address,transaction_reg,cfg_step,state};
+                debug_last_data<={transaction_write,transaction_data};
+                if(transaction_read && !transaction_ack)debug_noacks<=debug_noacks+1'b1;
+                if(state==S_ID1_WAIT && transaction_ack)debug_id1<=transaction_data;
+                if(state==S_ID2_WAIT && transaction_ack)debug_id2<=transaction_data;
+                if(state==S_POLL_WAIT && transaction_ack)debug_phystatus<=transaction_data;
+            end
+            if(cfg_failed || poll_failed || scan_failed) begin
+                debug_retries<=debug_retries+1'b1;
+                debug_failure<={state,cfg_step,transaction_read,transaction_ack,transaction_reg,transaction_data};
+            end
+        end
+    end
 
     mdio_clause22 #(.CLK_HZ(CLK_HZ), .MDC_HZ(MDC_HZ)) u_mdio (
         .clk(clk), .rst_n(rst_n), .start(transaction_start),

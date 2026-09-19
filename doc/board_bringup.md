@@ -1,8 +1,12 @@
 # PG2L200H 上板与采集
 
-本指南对应盘古 MINI-200H、PG2L200H / FBB676 / -6，以及 README 中确认的 J10、J25、PHY0 接线。功能仿真结果见 [系统验证报告](reports/system_verification.md)，发布依据是构建目录内的 `release.json`。文件存在本身不代表该版本通过发布检查。
+> 2026-09-20 当前版本：八路同源时钟、1.8 V 麦克风接口已完成并通过发布检查。推荐[下载位流](../fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/generate_bitstream/mems_array_pg2l200h.sbit)，[发布记录](../fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/release.json)为 PASS。接线和供电条件见[当前发布报告](reports/clk8_18v_update.md)。接入阵列前必须实测确认 L6/L7 为 1.8 V。下文涉及旧四路 3.3 V 接线、2026-09-17 自测位流的内容为历史记录。
 
-2026-09-16 09:37（UTC+8）的 [最终发布检查](../fpga/build/MEMS_Array/release.json) 已通过，`release_authorized=true`，可使用本轮文件开始工程上板联调。实际资源、双角时序、位流 SHA-256 及剩余板级验证条件见 [完整实现报告](reports/fpga_implementation.md)；本轮尚未执行实板下载或测量。
+本指南对应盘古 MINI-200H、PG2L200H / FBB676 / -6，以及 README 中确认的 J10、J25、J26、PHY0 接线。功能仿真结果见 [系统验证报告](reports/system_verification.md)，发布依据是构建目录内的 `release.json`。文件存在本身不代表该版本通过发布检查。
+
+2026-09-17 增加按键和 LED 自测，当时的构建目录为 `fpga/build/MEMS_Array_selftest/`。旧版已发布位流保留在 `fpga/build/MEMS_Array/`，不包含自测；不要混用两版工程和发布记录。新增功能与模拟数据验收见 [selftest.md](selftest.md)。
+
+历史自测构建于2026-09-17 02:28完成，当时的 [release.json](../fpga/build/MEMS_Array_selftest/release.json) 为PASS且允许工程上板联调。资源、时序、位流校验值及尚需实测的边界见 [自测实现报告](reports/selftest_implementation.md)。
 
 ## 构建与发布文件
 
@@ -10,7 +14,7 @@
 
 ```powershell
 python sim/verify_all.py
-python fpga/scripts/build.py --stage gen_bit_stream
+python fpga/scripts/build.py --stage gen_bit_stream --build-name MEMS_Array_uart_clk8_18v_spread3_long --placement-decongestion 3 --pnr-timeout-minutes 180
 ```
 
 第一条命令重新运行数值模型、RTL、厂商原语和上位机回归。第二条从编译开始执行综合、器件映射、布局布线和双角时序检查，检查通过后才生成位流，并再次核对产物。修改 RTL、系数、测试或约束后须重新执行相应验证和完整构建。`--start-stage` 只用于诊断，不能用于发布。
@@ -19,11 +23,11 @@ python fpga/scripts/build.py --stage gen_bit_stream
 
 | 文件 | 用途 |
 |---|---|
-| `fpga/build/MEMS_Array/MEMS_Array.pds` | 本次完整构建的 Pango 工程 |
-| `fpga/build/MEMS_Array/generate_bitstream/mems_array_pg2l200h.sbit` | Pango 带信息头的 FPGA 配置位流 |
-| `fpga/build/MEMS_Array/generate_bitstream/mems_array_pg2l200h.bin` | 无信息头的原始配置数据 |
-| `fpga/build/MEMS_Array/release.json` | 发布状态、源代码、回归、报告与位流 SHA-256 |
-| `fpga/build/MEMS_Array/report_timing/mems_array_pg2l200h.rtr` | 实际布线后的慢角、快角时序报告 |
+| `fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/MEMS_Array.pds` | 编译阶段 Pango 工程；完整重建使用上述脚本 |
+| `fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/generate_bitstream/mems_array_pg2l200h.sbit` | Pango 带信息头的 FPGA 配置位流 |
+| `fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/generate_bitstream/mems_array_pg2l200h.bin` | 无信息头的原始配置数据 |
+| `fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/release.json` | 发布状态、源代码、回归、报告与位流 SHA-256 |
+| `fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/report_timing/mems_array_pg2l200h.rtr` | 实际布线后的慢角、快角时序报告 |
 
 烧录前应确认 `release.json` 的 `status` 为 `PASS`，且 `release_authorized` 为 `true`，并使用其中记录的位流。`pre_bit_check.json` 仅是生成前检查，不是发布结果。原有 `fpga/MEMS_Array.pds` 与自动构建工程不同，打开工程时应选择上述 `fpga/build` 下的文件。
 
@@ -34,11 +38,12 @@ python fpga/scripts/build.py --stage gen_bit_stream
 ## 板卡连接
 
 1. 核对芯片封装与速度等级，按 README 连接 64 根共享 PDM DATA。每对麦克风的 LR 必须分别接 GND、VDD；DATAk 对应通道 `2k`（LR=GND）和 `2k+1`（LR=VDD）。共同参考地不可缺少。
-2. 四路时钟分别连接 DATA0～15、16～31、32～47、48～63 对应的麦克风，每组 32 只。时钟均为 3.072 MHz。接口约束使用 3.3 V，按硬件手册核对 L6/L7 电压跳线，并确认阵列侧信号电压兼容。扩展口的 5 V 电源针不能用作 FPGA 信号电压。
+2. 按 README 将 J10 的 CLK0～7 接到八组麦克风，全部为同源 3.072 MHz；均分时每组 16 只，实际以阵列接线为准。J26 接 DATA0～31，J25 接 DATA32～63。所有麦克风信号采用 LVCMOS18，CLK 为 16 mA/FAST。断电后将 J24 选择为 VADJ=1.8 V、J20 选择 VADJ 给 L6/L7 供电，接入阵列前实测 VCCIO 和 MEMS VDD 均为 1.8 V。扩展口 A3V3/A5V0 电源针不随此设置变成 1.8 V。
 3. 确保 D18 的 27 MHz 与 N3/N2 的 125 MHz 板载参考可用。音频使用两级 PLL；网络使用独立 PLL 倍频至 250 MHz，再以连续上升沿二分频生成 125 MHz。任一 PLL 失锁都会重新执行全局启动流程。C22 的 KEY0 是低有效全局复位。
-4. PHY0 千兆口连接电脑或同一局域网的千兆交换机。把接收网卡设为 `192.168.10.1/24`，允许接收 UDP 5000；FPGA 为 `192.168.10.2`。本设计只在协商为 1000M 全双工时采集。
+4. 状态反馈和测试控制使用 COM3、115200 8N1，无流控，见 [UART 联调指南](system_uart_debug.md)。UART RX=B24、TX=C24；原 KEY0/KEY1 功能兼容保留。
+5. PHY0 千兆口连接电脑或同一局域网的千兆交换机。把接收网卡设为 `192.168.10.1/24`，允许接收 UDP 5000；FPGA 为 `192.168.10.2`。本设计只在协商为 1000M 全双工时采集。
 
-阵列外部时序条件须由硬件实现满足：PDM 外部传播预算 20 ns 包括时钟缓冲、连接器与往返布线；在实际麦克风引脚处，3.072 MHz 时钟的占空比须在 48%～52%，上升/下降时间须不超过 13 ns。现有资料没有给出 CLK 输入电容，因此不能仅凭 FPGA 时序通过认定一个输出脚能直接驱动 32 只麦克风。RGMII PCB 相对走线偏差预算为 ±0.2 ns。具体预算与约束以最终实现报告为准。
+阵列外部时序条件须由硬件实现满足：PDM 外部传播预算 20 ns 包括时钟缓冲、连接器与往返布线；在实际麦克风引脚处，3.072 MHz 时钟的占空比须在 48%～52%，上升/下降时间须不超过 13 ns。现有资料没有给出 CLK 输入电容，因此不能仅凭 FPGA 时序通过认定每个时钟输出脚的实际阵列负载已经合格。RGMII PCB 相对走线偏差预算为 ±0.2 ns。具体预算与约束以最终实现报告为准。
 
 ## 下载与启动
 
@@ -69,7 +74,7 @@ python lib/host/receive_pcm.py --output captures/run01 --seconds 30
 | `ping` 不通 | 本设计只接收 ARP，不实现 ICMP；以 UDP 接收和包校验结果判断业务链路 |
 | 主机队列丢包 | 查看 `host_queue_dropped_packets`，减少同时运行的任务、检查磁盘吞吐，并按接收指南调整缓冲 |
 | 包号或帧号有缺口 | 查看逐帧元数据和总结，切断定位时间窗；帧号缺口不能按连续采样直接使用 |
-| flags 非零 | bit0 饱和、bit1 前处理溢出、bit2 调度错误、bit3 帧结构错误；状态在同一会话内保持，不能把每个后续标志都计为一次新故障 |
+| flags 非零 | bit0 饱和、bit1 前处理溢出、bit2 调度错误、bit3 帧结构错误；bit4仅表示自测数据，bit5表示自测失败。错误位在同一会话内保持，不能把每个后续标志都计为一次新故障 |
 | 通道无声或成对异常 | DATA 与 LR 接线、真实负载下的时钟边沿/电压、麦克风供电和 DATA 有效窗口 |
 
 稳定输入情况下，正常采集应没有格式错误或新增缺帧。用实际阵列完成各通道极性/增益/延迟测量后，可通过 `lib/model/export_board_calibration.py` 导入 128 行增益 Q22、偏置 Q30 并重新构建；阵元坐标与声学延迟校准用于定位算法，不能由 FPGA 管脚顺序推断。上位机字段、缺帧统计和文件读取方法详见 [接收指南](host_capture.md)。

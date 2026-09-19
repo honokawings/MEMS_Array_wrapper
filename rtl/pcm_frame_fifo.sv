@@ -30,6 +30,13 @@ module pcm_frame_fifo #(
     assign pcm_last=pcm_valid && channel==CHANNELS-1;
     wire pop_frame=pcm_valid && pcm_ready && pcm_last;
     wire push_frame=valid_i && ((count<DEPTH) || pop_frame);
+    // Preserve the single-write-port RAM template. An explicit limit splits
+    // the wide memory write-enable load without turning RAM into registers.
+    wire write_enable /* synthesis syn_keep=1 syn_maxfan=256 */;
+    assign write_enable=rst_n && push_frame;
+    always @(posedge clk) if(write_enable) begin
+        frames[wr]<=frame_i; ids[wr]<=frame_id_i;
+    end
     always @(posedge clk) begin
         if(!rst_n) begin
             rd<=0; wr<=0; count<=0; channel<=0;
@@ -40,7 +47,6 @@ module pcm_frame_fifo #(
                 else channel<=channel+1'b1;
             end
             if(push_frame) begin
-                frames[wr]<=frame_i; ids[wr]<=frame_id_i;
                 wr<=(wr==DEPTH-1)?0:wr+1'b1;
             end
             case({push_frame,pop_frame})

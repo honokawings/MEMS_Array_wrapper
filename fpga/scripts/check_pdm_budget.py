@@ -17,7 +17,7 @@ def sha(path):
 
 
 def microphone_launches(netlist):
-    """Trace all four clock pads back to their actual physical launch FFs."""
+    """Trace all eight clock pads back to their actual physical launch FFs."""
     pins_of = lambda text: {pin: net.strip() for pin, net in
                            re.findall(r'\.(\w+)\s+\(([^)]*)\)', text)}
     ff_by_q = {}
@@ -27,7 +27,12 @@ def microphone_launches(netlist):
         if pins.get('Q'):
             if pins['Q'] in ff_by_q:
                 raise ValueError('Multiple FF drivers on a physical net')
-            ff_by_q[pins['Q']] = (logical, physical)
+            # Physical replicas are acceptable only if all state inputs and
+            # primitive parameters match; a matching instance name is not proof.
+            params = re.findall(r'\.(\w+)\s*\(([^)]*)\)', match[0].split('\\'+physical)[0])
+            signature = (_, tuple(sorted((k,v) for k,v in pins.items() if k!='Q')),
+                         tuple(sorted((k,v.strip()) for k,v in params)))
+            ff_by_q[pins['Q']] = (logical, physical, signature)
     aliases = {}
     for match in re.finditer(r'^    V_BUF\s+\\(\S+)\s+\(\n(.*?)\);', netlist, re.M | re.S):
         pins = pins_of(match.group(2))
@@ -37,7 +42,7 @@ def microphone_launches(netlist):
     for match in re.finditer(r'^    V_OBUF\w* /\* (.*?) \*/.*?\n        \\(\S+)\s+\(\n(.*?)\);', netlist, re.M | re.S):
         _, physical, pin_text = match.groups()
         pins = pins_of(pin_text)
-        if not re.fullmatch(r'mic_clk\[[0-3]\]', pins.get('O', '')):
+        if not re.fullmatch(r'mic_clk\[[0-7]\]', pins.get('O', '')):
             continue
         if pins.get('T', "1'b0") != "1'b0":
             raise ValueError('Microphone clock output is not permanently enabled')
@@ -50,13 +55,18 @@ def microphone_launches(netlist):
             net = aliases[net]
         if net not in ff_by_q:
             raise ValueError(f'Cannot trace {pins["O"]} to a launch FF')
-        logical, launch = ff_by_q[net]
+        logical, launch, signature = ff_by_q[net]
         if not re.search(r'capture/mic_clk(?:[_/\[]|$)', logical):
             raise ValueError(f'Unexpected microphone clock source: {logical}')
         pads.append(dict(port=pins['O'], output_buffer=physical,
-                         launch_logical=logical, launch_physical=launch))
-    if len(pads) != 4 or {p['port'] for p in pads} != {f'mic_clk[{i}]' for i in range(4)}:
-        raise ValueError('Cannot prove the launch FF for all four microphone clock pads')
+                         launch_logical=logical, launch_physical=launch,
+                         source_signature=signature))
+    if len(pads) != 8 or {p['port'] for p in pads} != {f'mic_clk[{i}]' for i in range(8)}:
+        raise ValueError('Cannot prove the launch FF for all eight microphone clock pads')
+    if len({p['source_signature'] for p in pads}) != 1:
+        raise ValueError('Microphone clock replicas do not share identical state inputs and parameters')
+    for pad in pads:
+        del pad['source_signature']
     return pads
 
 
@@ -113,6 +123,25 @@ def clock_branches(netlist_path, sdf_path):
                 capture_clock_branch_lower_bound_ns=0.0, registers=records)
 
 
+def input_budget(report, corner, netlist):
+    # KEY1 shares the zero-reference input group with the 64 PDM pins. Its
+    # presence is proved from the actual netlist, not a permissive count range.
+    # min slack across this superset cannot exceed min slack of PDM alone;
+    # 5 - group WNS remains a conservative upper bound on every PDM input path,
+    # even though KEY1 itself has a separate 7.5 ns path limit.
+    key_present = bool(re.search(r'\binput\s+selftest_key_n\s*;', netlist))
+    expected_endpoints = 64 + int(key_present)
+    section = re.search(r'Setup Summary\(' + corner.title() + r' Corner\):(.*?)(?=Hold Summary)', report, re.S)
+    row = re.search(r'^\s*async_pad_ref\s+audio122\s+([\d.+-]+)\s+([\d.+-]+)\s+(\d+)\s+(\d+)\s*$',
+                    section.group(1) if section else '', re.M)
+    if not row or int(row.group(3)) != 0 or int(row.group(4)) != expected_endpoints:
+        raise ValueError(f'Missing successful {corner} input setup summary for 64 PDM inputs'+(' and KEY1' if key_present else ''))
+    bound = 5.0 - float(row.group(1))
+    if not 0 <= bound <= 5.0:
+        raise ValueError('Unexpected PDM input path budget')
+    return bound, expected_endpoints
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for arg in ('timing-report', 'slow-sdf', 'slow-netlist', 'fast-sdf', 'fast-netlist', 'output'):
@@ -129,16 +158,11 @@ def main():
             raise ValueError('The complete routed report must meet all constraints, including the 4 ns microphone outputs')
         result['corners'] = {}
         for corner in ('slow', 'fast'):
-            section = re.search(r'Setup Summary\(' + corner.title() + r' Corner\):(.*?)(?=Hold Summary)', report, re.S)
-            row = re.search(r'^\s*async_pad_ref\s+audio122\s+([\d.+-]+)\s+([\d.+-]+)\s+(\d+)\s+(\d+)\s*$',
-                            section.group(1) if section else '', re.M)
-            if not row or int(row.group(3)) != 0 or int(row.group(4)) != 64:
-                raise ValueError(f'Missing successful {corner} input setup summary for all 64 PDM inputs')
-            input_setup_ns = 5.0 - float(row.group(1))
-            if not 0 <= input_setup_ns <= 5.0:
-                raise ValueError('Unexpected PDM input path budget')
+            netlist = getattr(args, corner+'_netlist').read_text(encoding='utf8')
+            input_setup_ns, endpoints = input_budget(report, corner, netlist)
             data = clock_branches(getattr(args, corner+'_netlist'), getattr(args, corner+'_sdf'))
             data['input_pad_through_setup_ns'] = input_setup_ns
+            data['input_summary_endpoints'] = endpoints
             result['corners'][corner] = data
         audio_blocks = [b for b in report.split('Startpoint  :')[1:]
                         if 'Path Group  : audio122' in b and 'Path Type   : max' in b]

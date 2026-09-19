@@ -20,7 +20,7 @@ module tb_pcm_transport;
         .wr_valid(wr_valid),.wr_ready(wr_ready),.rd_clk(rd_clk),
         .rd_rst_n(rd_rst_n),.rd_data(rd_data),.rd_valid(rd_valid),.rd_ready(rd_ready));
     pcm_udp_packetizer packetizer (
-        .clk(rd_clk),.rst_n(rd_rst_n),.stream_epoch(epoch),
+        .clk(rd_clk),.rst_n(rd_rst_n),.stream_epoch(epoch),.selftest_mode(1'b0),.selftest_error(1'b0),
         .sample_data(rd_data[23:0]),.sample_channel(rd_data[30:24]),
         .sample_frame_id(rd_data[94:31]),.sample_first(rd_data[95]),
         .sample_last(rd_data[96]),.sample_status(rd_data[99:97]),

@@ -18,29 +18,28 @@
 
 ## MEMS麦克风引脚映射
 ### CLK
-CLK0: DATA 0-15
-CLK1: DATA16-31
-CLK2: DATA32-47
-CLK3: DATA48-63
+CLK0～CLK7：八个独立输出引脚，共用同一 3.072 MHz 分频源、相位和复位。物理负载按阵列接线分组，DATA0～63 的逻辑通道编号不变。
+
+MEMS VDD=1.8 V。八路时钟采用 LVCMOS18、16 mA、FAST；Bank L6/L7 必须由硬件设置为 1.8 V。当前映射为 J10/L6 的 CLK0～7、J26/L7 的 DATA0～31、J25/L6 的 DATA32～63，麦克风接口不再占用 L5。详见[八路时钟与电压核查](doc/reports/clk8_18v_update.md)。
 
 ### J10-40pin
 GND           |   A5V0
-R21 -DATA2    |   R20 -DATA1
-N19 -DATA3    |   P19 -DATA0
-M25 -DATA4    |   M24 -DATA16
-T25 -DATA10   |   T24 -DATA24
-R22 -DATA5    |   T22 -DATA8
-K26 -DATA7    |   K25 -DATA25
-L25 -DATA6    |   L24 -DATA28
-L23 -DATA12   |   L22 -DATA26
-AA25-DATA15   |   Y25 -DATA9
-AB25-DATA14   |   AA24-DATA30
-AC24-DATA13   |   AB24-DATA29
-R23 -DATA11   |   T23 -DATA27
-P26 -DATA22   |   R26 -DATA31
-M26 -DATA19   |   N26 -DATA17
-M22 -DATA21   |   M21 -DATA18
-U26 -DATA23   |   U25 -DATA20
+R21 -         |   R20 -
+N19 -         |   P19 -
+M25 -         |   M24 -
+T25 -         |   T24 -
+R22 -         |   T22 -
+K26 -         |   K25 -
+L25 -         |   L24 -
+L23 -         |   L22 -
+AA25-CLK7     |   Y25 -CLK6
+AB25-CLK4     |   AA24-CLK3
+AC24-         |   AB24-
+R23 -         |   T23 -
+P26 -         |   R26 -
+M26 -         |   N26 -
+M22 -         |   M21 -
+U26 -CLK5     |   U25 -CLK2
 AC26-CLK0     |   AB26-CLK1
 GND           |   GND
 A3V3          |   A3V3
@@ -63,10 +62,31 @@ U16 -DATA32   |   U15 -DATA55
 V17 -DATA56   |   V16 -DATA51
 V21 -DATA48   |   U21 -DATA52
 W24 -DATA50   |   V24 -DATA49
-AA23-CLK2     |   AA22-CLK3
+AA23-         |   AA22-
 GND           |   GND
 A3V3          |   A3V3
 
+### J26-40pin
+GND           |   A5V0
+AC23-DATA2    |   AC22-DATA1
+AD26-DATA3    |   AD25-DATA0
+AD24-DATA4    |   AD23-DATA16
+AF20-DATA10   |   AF19-DATA24
+AE20-DATA5    |   AD20-DATA8
+AF18-DATA7    |   AE18-DATA25
+AF17-DATA6    |   AE17-DATA28
+AB20-DATA12   |   AA20-DATA26
+AD17-DATA15   |   AC17-DATA9
+AC16-DATA14   |   AB16-DATA30
+W15 -DATA13   |   W14 -DATA29
+AE26-DATA11   |   AE25-DATA27
+AF25-DATA22   |   AF24-DATA31
+AF23-DATA19   |   AE23-DATA17
+AD19-DATA21   |   AC19-DATA18
+AE21-DATA23   |   AD21-DATA20
+AF22-         |   AE22-
+GND           |   GND
+A3V3          |   A3V3
 
 ## 千兆网口接口映射
 使用Realtek RTL8211F-CG PHY实现了一个10/100/1000以太网端口，用于网络连接
@@ -111,14 +131,28 @@ v1.0 的验证范围为数字算法与 RTL 功能；当前具体器件上的实�
 
 ## 完整系统
 
-**2026-09-16 工程发布已通过**：完整功能回归 10 项通过，PG2L200H 布局布线后的双角时序检查通过，已生成 [JTAG 位流 `.sbit`](fpga/build/MEMS_Array/generate_bitstream/mems_array_pg2l200h.sbit) 与 [原始配置 `.bin`](fpga/build/MEMS_Array/generate_bitstream/mems_array_pg2l200h.bin)。工程入口为 [MEMS_Array.pds](fpga/build/MEMS_Array/MEMS_Array.pds)，最终状态与校验值见 [release.json](fpga/build/MEMS_Array/release.json)，资源及时序见 [实现报告](doc/reports/fpga_implementation.md)。发布范围为工程上板联调：尚未实板测试，工具使用 `Pre-silicon` 模型，TXC 保守抖动敏感性检查仍为 `FAIL`；实际 TXC 与满载 PDM 时钟波形须按 [上板指南](doc/board_bringup.md) 测量确认。
+**当前八路同源时钟、1.8 V 完整系统（2026-09-20）**：已按最新版引脚表实现 J10/L6 的 CLK0～7、J26/L7 的 DATA0～31、J25/L6 的 DATA32～63。八路 CLK 为同源 3.072 MHz、LVCMOS18、16 mA、FAST。推荐[下载位流](fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/generate_bitstream/mems_array_pg2l200h.sbit)，[最终发布检查](fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/release.json)为 PASS，12 项功能回归及 146 项检查器测试通过，双角时序无违例。新位流尚未上板；下载接入前须将实际 L6/L7 VCCIO 设为并实测确认 1.8 V。详见[引脚、时序和交付报告](doc/reports/clk8_18v_update.md)。
 
-目标器件为 **PG2L200H / FBB676 / -6**。板级连接依据本 README 的 J10、J25、PHY0 映射及 `doc/盘古MINI系列开发板硬件指导手册_V1.3.pdf`。D18 的 27 MHz 经两级 PLL 产生准确的 122.88 MHz 音频时钟；N3/N2 的 125 MHz 差分参考经 PLL 倍频至 250 MHz，再由专用单沿分频器生成 125 MHz 网口时钟，以改善占空比。复位为 C22 的低有效 KEY0。
+**此前四路时钟 UART 完整系统（2026-09-19 修正版；不适用于当前 1.8 V 阵列直连）**：已修正以太网 PLL 参数，并通过 COM3 反馈 PHY/MDIO、ARP、UDP、PCM 与时钟状态。本次进一步修正“等待 ARP 时采集队列溢出”：ARP 就绪后才启动采集，模式切换保留对端地址。正式版 `fpga/build/MEMS_Array_uart_arp_ready_routed/` 已通过 [发布检查](fpga/build/MEMS_Array_uart_arp_ready_routed/release.json)、12 项功能回归及 116 项检查器测试，双角时序无违例，音频慢角 setup 裕量 +0.118 ns。[下载位流](fpga/build/MEMS_Array_uart_arp_ready_routed/generate_bitstream/mems_array_pg2l200h.sbit) 已 JTAG 下载并实测：PHY/MDIO → ARP → UDP 通过，两级 BIST PASS，157,314,048 个通道样本逐位一致，启动/模式切换缺帧与 FPGA 溢出均为 0。恢复真实输入后发现 128 路均为正满量程，阵列接入/供电与 PDM 接线仍待核对，不能将数字自检通过等同于真实声学验收。详见 [本轮修正与实测报告](doc/reports/arp_ready_fix.md) 和 [UART 联调指南](doc/system_uart_debug.md)。旧版问题证据保留在 [先前实板报告](doc/reports/uart_board_test_20260919.md)。
 
-数据路径为 **64 根共享 PDM 线 → 128 通道同步前处理与校准 → 跨时钟 FIFO → 3 帧打包 → UDP/IPv4/ARP MAC → RGMII → RTL8211F-CG**。四路麦克风时钟均为 3.072 MHz。输出保持 48 kHz / 24 位，单包 1208 字节，线路占用约 163.072 Mbit/s。
+此前五键五灯映射已实测通过；旧时钟诊断确认以太网 PLL 未锁定并阻止系统复位释放，参数存在 PFD/带宽组合约束问题。将 PFD 从 125 MHz 改为 31.25 MHz、保持输出频率不变后，[COM3 UART 时钟诊断](fpga/diagnostics/uart_clock/README.md) 已通过 30 秒实板测试：125 条完整记录，三个 PLL 锁定、四路频率合格、复位释放；软件复位恢复、自检模式开关及心跳检查通过，无丢帧或串口接收错误。见 [实测摘要](log/clock_uart/board_verified_20260918_223923/summary.json)。该独立诊断将 PHY 保持复位，不提供网络收发；其通过不能代替新版完整系统网络验收。
+
+**2026-09-17 新增按键自测**：KEY1 切换内部 PDM 自测，LED0～4 显示心跳、模式、数值校验、发送和故障；未连接麦克风阵列时仍可测试完整前处理与千兆通信。11 项全量回归已通过，专项自测的 15,360 个线上 PCM 样本逐位一致。使用方法见 [自测指南](doc/selftest.md)，上位机开发交付文档见 [接口开发参考](doc/host_protocol_reference.md)，其中包含真实二进制报文样例。
+
+历史自测构建 `fpga/build/MEMS_Array_selftest/` 的 [release.json](fpga/build/MEMS_Array_selftest/release.json) 及 [自测实现报告](doc/reports/selftest_implementation.md) 保留作当时实现证据。该位流包含后来实板发现的 PLL 参数问题，不作为本轮下载版本。2026-09-16 的 `fpga/build/MEMS_Array/` 及归档也保留旧版证据，旧位流没有按键自测功能。
+
+目标器件为 **PG2L200H / FBB676 / -6**。板级连接依据本 README 的 J10、J25、J26、PHY0 映射及 `doc/盘古MINI系列开发板硬件指导手册_V1.3.pdf`。D18 的 27 MHz 经两级 PLL 产生准确的 122.88 MHz 音频时钟；N3/N2 的 125 MHz 差分参考经 PLL 倍频至 250 MHz，再由专用单沿分频器生成 125 MHz 网口时钟，以改善占空比。复位为 C22 的低有效 KEY0。
+
+数据路径为 **64 根共享 PDM 线 → 128 通道同步前处理与校准 → 跨时钟 FIFO → 3 帧打包 → UDP/IPv4/ARP MAC → RGMII → RTL8211F-CG**。当前 RTL 已扩展为八路同源 3.072 MHz 麦克风时钟，新版引脚、1.8 V 约束和推荐位流均已完成并通过发布检查。输出保持 48 kHz / 24 位，单包 1208 字节，线路占用约 163.072 Mbit/s。
 
 | 内容 | 入口 |
 |---|---|
+| 完整系统 UART 状态、命令与逐级网络验收 | [doc/system_uart_debug.md](doc/system_uart_debug.md) |
+| PLL 修正、UART 集成与本轮验证结果 | [doc/reports/uart_system_implementation.md](doc/reports/uart_system_implementation.md) |
+| 无麦克风自测、按键和 LED | [doc/selftest.md](doc/selftest.md) |
+| 上位机软件开发参考（含真实报文） | [doc/host_protocol_reference.md](doc/host_protocol_reference.md) |
+| 可交付给上位机开发人员的参考包 | [M128_Host_Reference_v1.1.zip](doc/deliverables/M128_Host_Reference_v1.1.zip) |
+| 自测捕获数据逐样本验收 | [lib/host/verify_selftest.py](lib/host/verify_selftest.py) |
 | 板级完整顶层 | [rtl/board/mems_array_pg2l200h.sv](rtl/board/mems_array_pg2l200h.sv) |
 | 可移植采集和网络内核 | [rtl/net/mems_ethernet_core.sv](rtl/net/mems_ethernet_core.sv) |
 | 数据包格式、帧号和会话定义 | [doc/transport_spec.md](doc/transport_spec.md) |
@@ -134,10 +168,10 @@ v1.0 的验证范围为数字算法与 RTL 功能；当前具体器件上的实�
 
 运行 `python sim/verify_all.py` 完成所有层次回归；`--rtl-only` 复用已生成参考向量。原 `sim/sim.bat` 仍保留为前处理回归入口。软件依赖见集成指南，厂商原语仿真另需已安装的 Pango Design Suite。
 
-默认 FPGA 地址为 `192.168.10.2`，接收电脑地址为 `192.168.10.1`，UDP 端口 `5000`，只支持同一二层网段。PHY 自动初始化并配置 1000M 全双工、RGMII 内部延迟和关闭 EEE 广告。链路就绪后自动开始采集；断线重连会改变会话号并重新完成启动等待。
+默认 FPGA 地址为 `192.168.10.2`，接收电脑地址为 `192.168.10.1`，UDP 端口 `5000`，只支持同一二层网段。PHY 自动初始化并配置 1000M 全双工、RGMII 内部延迟和关闭 EEE 广告。物理链路建立后主动解析 ARP，对端地址有效且校准就绪后才开始采集；模式切换保留 ARP 缓存，物理断线重连会清除缓存、改变会话号并重新解析。
 
 默认校准系数为增益 1、偏置 0。实测校准的两列整数文件可用 `python lib/model/export_board_calibration.py measured.txt` 写入板级校准 ROM，再重新构建位流。不得把测试向量中的故意饱和/异常校准值用于真实阵列。
 
-引脚约束按麦克风接口 3.3 V 设置，使用前须按硬件手册核对可调 Bank L6/L7 的实际电压跳线；125 MHz 差分时钟所在 Bank 使用 1.5 V SSTL15D_I。板级仿真、实现报告和实际硬件测试是不同的验证范围，发布状态以最终构建与验证报告为准。
+MEMS 供电为 1.8 V，不能继续沿用旧位流的 3.3 V 时钟输出。当前 64 根 DATA 和八路 CLK 均位于可调电压 L6/L7，全部使用 LVCMOS18。按开发板手册将 J24 选择为 VADJ=1.8 V，J20 选择 VADJ 为 L6/L7 供电；接入阵列前须测量实际电压。约束不会改变板上供电，扩展口 A3V3/A5V0 电源针也不会变成 1.8 V。125 MHz 差分参考仍为 1.5 V SSTL15D_I；PHY、UART、按键和 LED 保持各自原有电平。
 
-接口时序包含明确的板级假设：RGMII 发送端要求 FPGA 引脚处 TXD/TXCTRL 相对 TXC 的偏差不超过 ±0.3 ns，另预留 PCB 相对走线偏差 ±0.2 ns。PDM 的 20 ns 外部传播预算包含时钟扇出/缓冲、连接器及往返布线；每路 CLK 对应 32 只麦克风，不能仅凭 FPGA 内部输出路径通过时序检查就认定该扇出已经验证。IM72D128V01 手册未给出 CLK 输入电容，要求麦克风引脚处时钟上升/下降时间不超过 13 ns，3.072 MHz 下占空比为 48%～52%；其 DATA 有效延迟 100 ns 的测试负载为 100 pF/100 kΩ。实际阵列须通过外部时钟缓冲方案或带真实负载的测量保证这些边界；现有资料不足以证明四个 FPGA 引脚可以直接驱动全部麦克风。
+接口时序包含明确的板级假设：RGMII 发送端要求 FPGA 引脚处 TXD/TXCTRL 相对 TXC 的偏差不超过 ±0.3 ns，另预留 PCB 相对走线偏差 ±0.2 ns。PDM 的 20 ns 外部传播预算包含时钟扇出/缓冲、连接器及往返布线；八路均分时每路 CLK 对应 16 只麦克风（实际以阵列接线为准），不能仅凭 FPGA 内部输出路径通过时序检查就认定该扇出已经验证。IM72D128V01 手册未给出 CLK 输入电容，要求麦克风引脚处时钟上升/下降时间不超过 13 ns，3.072 MHz 下占空比为 48%～52%；其 DATA 有效延迟 100 ns 的测试负载为 100 pF/100 kΩ。实际阵列须通过外部时钟缓冲方案或带真实负载的测量保证这些边界；现有资料不足以证明八个 FPGA 引脚的实际带载波形满足上述要求。

@@ -12,8 +12,14 @@ flowchart LR
         FIR2 --> CAL[逐通道校准与 24 位饱和]
         CAL --> QUEUE[完整 PCM 帧队列]
     end
-    MIC --> CAP
+    MIC --> SEL[采集源选择]
+    BIST[内部确定性 PDM 源] --> SEL
+    SEL --> CAP
     QUEUE --> PIPE[可反压样本寄存器]
+    QUEUE --> CHECK[同步 ROM 逐样本自测比较]
+    KEY[KEY1 同步与消抖] --> CTRL[模式/校准重载控制]
+    CTRL --> SEL
+    CHECK --> LED[LED 状态]
     PIPE --> CDC[异步样本 FIFO]
     subgraph ETH[125 MHz 网络发送域]
         PACK[每包 3 帧] --> MAC[UDP / IPv4 / Ethernet]
@@ -70,6 +76,14 @@ PCM 总吞吐为128×48000 = 6.144 Msamples/s，24位有效载荷147.456 Mbit/s�
 FIFO 是以整帧为单位的环形队列。一个正在发送但尚未发送完的帧仍占据一个槽位。FIFO 满时，采集和滤波继续，新到的整个帧被丢弃，旧帧及已开始输出的帧保持完整；下一个成功输出帧的帧号可显示缺口。满队列与最后一个样本出队同周期发生时，允许新帧利用释放的槽位。
 
 `overflow` 和 `dropped_frames` 记录输出阻塞。`processing_error` 表示 CIC/FIR/校准调度过载，在默认结构和时钟下正常运行不会置位；一旦置位，应停止本轮处理、重新启动，不能继续把后续帧当成完整连续录音。
+
+## 按键自测
+
+`pdm_selftest_source` 在与采集器相同的音频域观察 `mic_clk` 的上升沿，逐 PDM 周期生成128路确定性bit，并按高/低槽复用成64线。源切换位于采集同步器之前，完整前处理链保持工作。`pcm_selftest_checker` 使用同步读取的2048×24位预期ROM，每次PCM握手同时核对值、通道、frame_id、first/last；比较与ROM读出分拍。预期表由独立Python/C++模型交叉生成，稳态16帧重复。
+
+`board_selftest_control` 同步KEY1并作20ms消抖，持续按下只触发一次。切换模式即撤销run，128路校准完成后再允许启动。自测统一校准为单位增益/零偏置；正常模式使用原ROM。跨域的模式和故障均为稳定电平，两级同步；网络域直接计数完整UDP发送事件，避免跨域传递单周期脉冲。每个流重启清空自测源、比较器和发送计数，板级故障灯另锁存至退出自测或全局复位。
+
+板级新增KEY1(C23)及LED0～4(A20/C19/C18/E18/A17)，总计93个约束端口。接口模式、超时和显示定义见 [selftest.md](selftest.md)；线上自测标志及软件预期表见 [host_protocol_reference.md](host_protocol_reference.md)。
 
 ## 可移植性边界
 

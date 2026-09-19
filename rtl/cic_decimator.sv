@@ -19,11 +19,13 @@ module cic_decimator #(
     reg running, decimate;
     reg [GW-1:0] group_index;
     reg [2:0] phase;
-    reg [4:0] cv;
+    reg [4:0] cv /* synthesis syn_maxfan=256 */;
+    wire clear_state /* synthesis syn_keep=1 syn_maxfan=256 */;
+    assign clear_state = !rst_n;
     reg [GW-1:0] tag [0:4];
     integer j;
     always @(posedge clk) begin
-        if (!rst_n) begin
+        if (clear_state) begin
             bits_hold <= 0; running <= 0; decimate <= 0;
             group_index <= 0; phase <= 0; cv <= 0;
             valid_o <= 0; overrun_o <= 0;
@@ -56,7 +58,7 @@ module cic_decimator #(
     reg [GROUPS-1:0] comb_valid [0:4];
     integer v;
     always @(posedge clk) begin
-        if (!rst_n) begin
+        if (clear_state) begin
             integrator_valid <= 0;
             for (v=0;v<5;v=v+1) comb_valid[v] <= 0;
         end else begin
@@ -74,7 +76,7 @@ module cic_decimator #(
         reg [31:0] comb_value [0:4];
         reg [GROUPS*32-1:0] result;
         always @(posedge clk) begin
-            if (!rst_n) begin
+            if (clear_state) begin
                 result <= 0;
             end else begin
                 if (cv[4]) result[tag[4]*32 +: 32] <= comb_value[4] << 15;
@@ -98,7 +100,7 @@ module cic_decimator #(
             wire [31:0] old_history=comb_valid[s][read_address] ? history[read_address] : 32'd0;
             if(s==0) begin: first_stage
                 always @(posedge clk) begin
-                    if(!rst_n) begin
+                    if(clear_state) begin
                         comb_value[s]<=0;
                     end else if(running && decimate) begin
                         comb_value[s]<=next_last-old_history;

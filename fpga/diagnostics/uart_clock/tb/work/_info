@@ -1,0 +1,36 @@
+m255
+K4
+z2
+!s11f vlog 2020.4 2020.10, Oct 13 2020
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z0 dd:/Workspace/Modelsim/260902_MEMS_Array/fpga/diagnostics/uart_clock/tb
+vtb_uart_clock
+DXx6 sv_std 3 std 0 22 9oUSJO;AeEaW`l:M@^WG92
+!s110 1789662487
+!i10b 1
+!s100 cX[J=[gBkZ24:OZ@dQ6UC1
+!s11b Dg1SIo80bB@j0V0VzS_@n1
+IidbFjN;22mODiNJ50NT[m2
+S1
+R0
+w1789662487
+8d:\Workspace\Modelsim\260902_MEMS_Array\fpga\diagnostics\uart_clock\tb\tb_uart_clock.sv
+Fd:\Workspace\Modelsim\260902_MEMS_Array\fpga\diagnostics\uart_clock\tb\tb_uart_clock.sv
+!i122 2
+L0 2 81
+VDg1SIo80bB@j0V0VzS_@n1
+OL;L;2020.4;71
+r1
+!s85 0
+31
+!s108 1789662487.000000
+!s107 d:\Workspace\Modelsim\260902_MEMS_Array\fpga\diagnostics\uart_clock\tb\tb_uart_clock.sv|
+!s90 -nologo|-work|work|d:\Workspace\Modelsim\260902_MEMS_Array\fpga\diagnostics\uart_clock\tb\tb_uart_clock.sv|
+!i113 0
+o-nologo -work work -L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+tCvgOpt 0

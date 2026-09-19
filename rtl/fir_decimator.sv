@@ -29,9 +29,20 @@ module fir_decimator #(
     reg [AW-1:0] write_pointer, base_pointer;
     reg [DW-1:0] decimation_phase;
     reg [TW-1:0] history_count, job_history, issue_count;
-    reg read_valid, partial_valid, middle_valid, product_valid;
+    reg read_valid /* synthesis syn_maxfan=256 */;
+    reg partial_valid /* synthesis syn_maxfan=256 */;
+    reg middle_valid /* synthesis syn_maxfan=256 */;
+    reg product_valid /* synthesis syn_maxfan=256 */;
     reg read_last, partial_last, middle_last, product_last;
-    reg final_valid;
+    // PDS's global fanout_guide excludes control pins. Explicit limits let
+    // ADS duplicate the drivers without adding a pipeline cycle.
+    reg final_valid /* synthesis syn_maxfan=256 */;
+    wire clear_state /* synthesis syn_keep=1 syn_maxfan=256 */;
+    wire capture_input /* synthesis syn_keep=1 syn_maxfan=256 */;
+    wire finish_product /* synthesis syn_keep=1 syn_maxfan=256 */;
+    assign clear_state = !rst_n;
+    assign capture_input = valid_i && !writing;
+    assign finish_product = product_valid && product_last;
     reg [GW-1:0] final_group;
     reg signed [31:0] read_coefficient;
     wire issue = busy && (issue_count < TAPS);
@@ -70,7 +81,7 @@ module fir_decimator #(
     endfunction
 
     always @(posedge clk) begin
-        if(!rst_n) begin
+        if(clear_state) begin
             input_hold<=0; writing<=0; busy<=0;
             write_group<=0; compute_group<=0;
             write_pointer<=0; base_pointer<=0; decimation_phase<=0;
@@ -85,15 +96,15 @@ module fir_decimator #(
             partial_valid<=read_valid; partial_last<=read_last;
             middle_valid<=partial_valid; middle_last<=partial_last;
             product_valid<=middle_valid; product_last<=middle_last;
-            final_valid<=product_valid && product_last;
-            if(product_valid && product_last) final_group<=compute_group;
+            final_valid<=finish_product;
+            if(finish_product) final_group<=compute_group;
             if(final_valid && final_group==GROUPS-1) valid_o<=1;
             if(issue) begin
                 read_coefficient<=coefficient(issue_count);
                 read_last<=(issue_count==TAPS-1);
                 issue_count<=issue_count+1'b1;
             end
-            if(product_valid && product_last) begin
+            if(finish_product) begin
                 issue_count<=0;
                 if(compute_group==GROUPS-1) busy<=0;
                 else compute_group<=compute_group+1'b1;
@@ -101,10 +112,11 @@ module fir_decimator #(
             if(valid_i) begin
                 if(writing) overrun_o<=1;
                 else begin
-                    input_hold<=data_i; writing<=1; write_group<=0;
+                    writing<=1; write_group<=0;
                     if(history_count<TAPS) history_count<=history_count+1'b1;
                 end
             end
+            if(capture_input) input_hold<=data_i;
             if(writing) begin
                 if(write_group==GROUPS-1) begin
                     writing<=0; write_pointer<=write_pointer+1'b1;
@@ -155,7 +167,7 @@ module fir_decimator #(
             end
         end
         always @(posedge clk) begin
-            if(!rst_n) begin
+            if(clear_state) begin
                 product_ll<=0; product_lh<=0; product_hl<=0; product_hh<=0;
                 high_product<=0; low_product<=0; middle_product<=0;
                 product<=0; accumulator<=0; final_sum<=0; result<=0; clipped<=0;
@@ -175,9 +187,10 @@ module fir_decimator #(
                 if(middle_valid) product<={upper_product,middle_product[15:0],low_product};
                 if(product_valid) begin
                     if(product_last) begin
-                        accumulator<=0; final_sum<=sum;
+                        accumulator<=0;
                     end else accumulator<=sum;
                 end
+                if(finish_product) final_sum<=sum;
                 if(final_valid) begin
                     if(rounded_sum > 72'sd2147483647) begin
                         result[final_group*32 +: 32]<=32'h7fffffff; clipped<=1;

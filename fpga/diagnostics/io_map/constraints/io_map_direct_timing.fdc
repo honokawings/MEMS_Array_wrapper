@@ -1,0 +1,10 @@
+# Human-operated combinational inputs; io_ref is a bookkeeping virtual clock.
+create_clock -name io_ref -period 1000.000
+set_input_delay -clock io_ref -max 0.000 [get_ports {key_n[*]}]
+set_input_delay -clock io_ref -min 0.000 [get_ports {key_n[*]}]
+set_output_delay -clock io_ref -max 0.000 [get_ports {led[*]}]
+set_output_delay -clock io_ref -min 0.000 [get_ports {led[*]}]
+# Bound the asynchronous key-to-LED pad path; no sampled receiver exists.
+set_max_delay 25.000 -datapath_only -from [get_ports {key_n[*]}] -to [get_ports {led[*]}]
+set_false_path -hold -from [get_ports {key_n[*]}]
+# mic_clk and phy_reset_n are constant-low outputs, with no timing path.

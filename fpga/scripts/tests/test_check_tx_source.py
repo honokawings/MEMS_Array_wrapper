@@ -141,7 +141,7 @@ class TxSourceGateTest(unittest.TestCase):
     def shaped_fixture(self, fall_ps=100):
         # These invented primitive delays test parsing/math only.
         netlist = '''
-V_GPLL #(.STATIC_RATIOI(1), .STATIC_RATIOM(4), .STATIC_RATIOF(2), .STATIC_RATIO0(4), .INTERNAL_FB("CLKOUTF")) pll (.CLKOUT0(c250));
+V_GPLL #(.STATIC_RATIOI(4), .STATIC_RATIOM(16), .STATIC_RATIOF(2), .STATIC_RATIO0(4), .INTERNAL_FB("CLKOUTF"), .BANDWIDTH("OPTIMIZED")) pll (.CLKOUT0(c250));
 V_IOCLKDIV_E2 #(.DIV_FACTOR("2")) div (.CLKIN(c250), .CLKDIVOUT(c125), .CE(1'b1));
 V_USCM #(.USCM_MODE("BUF_A")) buf (.CLK0(c125), .CLKOUT(clk));
 V_OSERDES_E2 #(.OSERDES_MODE("DDR2TO1_SAME_EDGE")) oddr (.DI({1'bx,1'bx,1'bx,1'bx,1'bx,1'bx,1'b0,1'b1}), .OCLK(clk), .DO(tx), .OCE(1'b1));
@@ -192,6 +192,20 @@ V_OBUFT obuf (.I(tx), .O(PHY0_TXC), .T(1'b0));
         self.shaped_fixture()
         p = self.nets['slow']
         p.write_text(p.read_text().replace('DIV_FACTOR("2")','DIV_FACTOR("1")'))
+        with self.assertRaises(gate.AuditError):
+            gate.shaped_clock_duty(self.sdfs, self.nets)
+
+    def test_old_125mhz_pfd_configuration_rejected(self):
+        self.shaped_fixture()
+        for path in self.nets.values():
+            path.write_text(path.read_text().replace('STATIC_RATIOI(4)', 'STATIC_RATIOI(1)').replace('STATIC_RATIOM(16)', 'STATIC_RATIOM(4)'))
+        with self.assertRaises(gate.AuditError):
+            gate.shaped_clock_duty(self.sdfs, self.nets)
+
+    def test_unvalidated_bandwidth_rejected(self):
+        self.shaped_fixture()
+        for path in self.nets.values():
+            path.write_text(path.read_text().replace('BANDWIDTH("OPTIMIZED")', 'BANDWIDTH("HIGH")'))
         with self.assertRaises(gate.AuditError):
             gate.shaped_clock_duty(self.sdfs, self.nets)
 

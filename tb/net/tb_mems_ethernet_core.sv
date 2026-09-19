@@ -18,7 +18,7 @@ module tb_mems_ethernet_core;
     wire [7:0] gmii_txd;
     wire gmii_tx_en,gmii_tx_er,overflow,processing_error,clipped,framing_error,tx_error,tx_packet_done;
     wire [31:0] dropped_frames,stream_epoch;
-    mems_ethernet_core #(.STARTUP_CYCLES(STARTUP),.ARP_RETRY_CYCLES(125000)) dut(.*);
+    mems_ethernet_core #(.STARTUP_CYCLES(STARTUP),.ARP_RETRY_CYCLES(125000)) dut(.selftest_mode(1'b0),.selftest_pass(),.selftest_fail(),.selftest_tx_pass(),.selftest_tx_fail(),.debug_audio(),.debug_eth(),.debug_rx(),.*);
     // Check conservation of every accepted sample, including its metadata,
     // across the added elastic stage under the real congestion/reset tests.
     reg [99:0] audio_queue[0:3],stalled_word;
@@ -144,7 +144,7 @@ module tb_mems_ethernet_core;
                     frame_id=id_value;
                     if(id_value>255 || frame_id<=last_id)$fatal(1,"[TB_ERROR] frame order/range id=%0d last=%0d",frame_id,last_id);
                     if(frame_id!=last_id+1)begin
-                        if(epoch==1)$fatal(1,"[TB_ERROR] unexpected normal-stream gap");
+                        if(epoch!=3)$fatal(1,"[TB_ERROR] ARP-gated stream lost a frame");
                         gaps=gaps+(frame_id-last_id-1);
                     end
                     last_id=frame_id;
@@ -187,23 +187,36 @@ module tb_mems_ethernet_core;
             @(negedge audio_clk);
         end
         cfg_valid=0;run=1;
-        for(epoch=1;epoch<=2;epoch=epoch+1)begin
+        for(epoch=1;epoch<=3;epoch=epoch+1)begin
             before_arp=arp_count;epoch_packets=0;last_id=95;
             @(negedge eth_clk);link_up=1;
             wait(arp_count>before_arp);
-            if(epoch==2)begin
-                // Delay address resolution until the finite frame buffers fill.
-                #650000;
-                if(!overflow || dropped_frames==0)$fatal(1,"[TB_ERROR] congestion did not exercise whole-frame drop");
+            if(epoch<=2)begin
+                // Delays longer than the finite queue capacity must not start
+                // capture. Epoch 2 also requires an autonomous ARP retry.
+                if(epoch==1) #650000; else #2000000;
+                if(acquisition_active || mic_clk || overflow || dropped_frames!=0 || dut.pcm_valid)
+                    $fatal(1,"[TB_ERROR] capture/overflow before peer resolution");
+                if(epoch==2 && arp_count<before_arp+2)
+                    $fatal(1,"[TB_ERROR] ARP retries require a queued PCM packet");
             end
             arp_reply();
-            if(epoch==1)wait(epoch_packets==53);
-            else wait(last_id>=250);
+            if(epoch<=2)wait(epoch_packets==53);
+            else begin
+                // Retain the genuine downstream-congestion test, now after
+                // resolution rather than relying on the startup bug.
+                wait(epoch_packets==4);
+                force dut.network.tx_payload_ready=1'b0;
+                #650000;
+                if(!overflow || dropped_frames==0)$fatal(1,"[TB_ERROR] forced backpressure did not exercise whole-frame drop");
+                release dut.network.tx_payload_ready;
+                wait(last_id>=250);
+            end
             @(posedge eth_clk);
             $display("[TB_DATA] epoch=%0d packets=%0d last_frame=%0d dropped_frames=%0d gaps=%0d PCM_exact=%0d",
                 epoch,epoch_packets,last_id,dropped_frames,gaps,pcm_compared);
-            if(epoch==1 && (overflow || dropped_frames!=0))$fatal(1,"[TB_ERROR] normal-rate overflow");
-            if(epoch==2 && (gaps==0 || !overflow))$fatal(1,"[TB_ERROR] missing gap/status");
+            if(epoch<=2 && (overflow || dropped_frames!=0))$fatal(1,"[TB_ERROR] delayed-ARP stream overflow");
+            if(epoch==3 && (gaps==0 || !overflow))$fatal(1,"[TB_ERROR] missing forced-congestion gap/status");
             link_up=0;
             repeat(40)@(negedge eth_clk);
             if(acquisition_active || mic_clk || gmii_tx_en)$fatal(1,"[TB_ERROR] linkdown flush");
@@ -217,5 +230,5 @@ module tb_mems_ethernet_core;
         $display("[TB_INFO] End-to-end PDM to UDP PASS packets=%0d samples=%0d gaps=%0d",udp_count,pcm_compared,gaps);
         $display("[TB_INFO] Simulation Finished!");$finish;
     end
-    initial begin #16000000;$fatal(1,"[TB_ERROR] Watchdog");end
+    initial begin #26000000;$fatal(1,"[TB_ERROR] Watchdog");end
 endmodule

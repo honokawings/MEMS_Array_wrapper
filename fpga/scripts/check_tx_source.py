@@ -213,9 +213,10 @@ def shaped_clock_duty(sdf_paths, netlist_paths):
         pll_name, pll, output = driver(div["ports"]["CLKIN"], {"V_GPLL": ("CLKOUT0",)})
         # PDS's generated netlist carries the true PLL divider parameters.
         p = pll["params"]
-        expected = {"STATIC_RATIOI": "1", "STATIC_RATIOM": "4", "STATIC_RATIOF": "2", "STATIC_RATIO0": "4"}
+        expected = {"STATIC_RATIOI": "4", "STATIC_RATIOM": "16", "STATIC_RATIOF": "2", "STATIC_RATIO0": "4"}
         for key, value in expected.items():
             need(p.get(key) == value, f"Unverified 125-to-250 MHz PLL parameter {key}={p.get(key)}")
+        need(p.get("BANDWIDTH") == '"OPTIMIZED"', "PLL bandwidth differs from vendor-validated PFD=31.25 MHz configuration")
         need(p.get("INTERNAL_FB") == '"CLKOUTF"', "Unexpected PLL feedback")
         need(p.get("SSC_MODE", '"DISABLE"') == '"DISABLE"', "Spread spectrum invalidates the duty budget")
         def arc(name, key):

@@ -1,4 +1,6 @@
-# PG2L200H 完整实现与位流发布报告
+# PG2L200H 完整实现与位流发布报告（2026-09-16 历史版本）
+
+> 本报告对应增加按键自测之前的已发布版本。2026-09-17 当前源码已增加自测，旧 PASS 不覆盖这些修改；原始源码快照在 `fpga/build/archive/20260916_released_before_selftest/source_snapshot/`。新版状态见 [selftest_implementation.md](selftest_implementation.md)。
 
 **本次工程发布通过。** 2026-09-16 09:14:46 至 09:36:38（UTC+8）完成从编译、综合、映射、布局布线、双角时序分析到位流生成；09:37:00 最终发布检查为 `PASS`，`release_authorized=true`。硬件源文件在构建前后保持一致。
 

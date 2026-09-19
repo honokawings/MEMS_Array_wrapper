@@ -21,7 +21,14 @@ module pcm_calibration #(
     reg [CHANNELS*32-1:0] input_hold;
     reg busy;
     reg [6:0] index, tag1, tag2;
-    reg v1,v2;
+    reg v1;
+    reg v2 /* synthesis syn_maxfan=256 */;
+    // Wide input/output registers need explicitly bounded control fanout;
+    // the PDS global fanout guide alone does not split CE/reset networks.
+    wire clear_state /* synthesis syn_keep=1 syn_maxfan=256 */;
+    wire capture_input /* synthesis syn_keep=1 syn_maxfan=256 */;
+    assign clear_state = !rst_n || !enable;
+    assign capture_input = valid_i && !(busy || v1 || v2);
     reg signed [32:0] difference;
     reg signed [23:0] gain_read;
     reg signed [56:0] product;
@@ -42,7 +49,7 @@ module pcm_calibration #(
         end
     end
     always @(posedge clk) begin
-        if(!rst_n || !enable) begin
+        if(clear_state) begin
             input_hold<=0; busy<=0; index<=0; tag1<=0; tag2<=0;
             v1<=0; v2<=0; difference<=0; gain_read<=0; product<=0;
             data_o<=0; valid_o<=0; clip_o<=0; overrun_o<=0;
@@ -50,8 +57,9 @@ module pcm_calibration #(
             valid_o<=0; v1<=busy; v2<=v1;
             if(valid_i) begin
                 if(busy || v1 || v2) overrun_o<=1;
-                else begin input_hold<=data_i; busy<=1; index<=0; end
+                else begin busy<=1; index<=0; end
             end
+            if(capture_input) input_hold<=data_i;
             if(busy) begin
                 difference <= {input_hold[index*32+31],input_hold[index*32 +: 32]} -
                               {offset[index][31],offset[index]};
