@@ -1,6 +1,8 @@
 # PLL 修正与完整系统 UART 集成
 
-2026-09-19 下午更新：当前使用 `MEMS_Array_uart_arp_ready_routed`，ARP 启动/切换丢帧修正已完成发布、JTAG 下载及实板数字链路验收，157,314,048 个样本逐位一致且零缺帧。真实输入仍出现全通道正饱和，尚待核对阵列状态。最新位流、时序与测试证据见 [修正报告](arp_ready_fix.md)。以下保留上午 `chain8` 版本的历史实现记录。
+> 历史记录：2026-09-19 UART / PLL 集成与当日 ARP 修正进展。正文中的“当前/本次/下一步”指当时状态。当前推荐位流与未完成实板项目见[最新发布报告](clk8_18v_update.md)，版本关系见[版本历史](version_history.md)。
+
+2026-09-19 下午历史更新：当时使用 `MEMS_Array_uart_arp_ready_routed`，ARP 启动/切换丢帧修正已完成发布、JTAG 下载及实板数字链路验收，157,314,048 个样本逐位一致且零缺帧。真实输入仍出现全通道正饱和，尚待核对阵列状态。最新位流、时序与测试证据见 [修正报告](arp_ready_fix.md)。以下保留上午 `chain8` 版本的历史实现记录。
 
 2026-09-19 03:47：带 UART 反馈的完整系统已生成工程上板位流，正式构建 `fpga/build/MEMS_Array_uart_chain8` 的最终 `release.json` 为 **PASS**，`release_authorized=true`。功能回归、双角时序和物理接口预算均通过。当天中午已完成 JTAG 下载及 PHY/MDIO、ARP、UDP 实收验证；样本数值正确，但发现启动/模式切换等待 ARP 导致 FPGA 丢帧，**实板整体验收未通过**。见 [实板测试与定位报告](uart_board_test_20260919.md)。
 

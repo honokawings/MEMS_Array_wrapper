@@ -34,7 +34,7 @@ epoch 仅用于两次全局复位之间区分链路会话；全局硬复位、�
 
 `flags` 的六个位与传输规格一致：bit0 饱和，bit1 前处理队列溢出，bit2 处理调度错误，bit3 帧结构错误，bit4 内部自测数据，bit5 自测校验失败。标志为包级状态；不能据此推断只有某一个通道或某一条记录发生异常。元数据的 `selftest` 等于 bit4；总结中的 `selftest_packets` 单独统计自测包，`flagged_packets` 只统计故障位（掩码0x2F）。自测包绝不能进入声学定位。
 
-无麦克风联调时，按 KEY1 进入自测，正常接收后运行 `python lib/host/verify_selftest.py --capture captures/run01 --min-frames 48000`。它比较全部通道预期数据、检查连续性和故障，并输出观察到的接收速率。详见 [自测指南](selftest.md)。
+无麦克风联调时，通过 UART 确认模式并发送 `t` 进入自测，正常接收后运行 `python lib/host/verify_selftest.py --capture captures/run01 --min-frames 48000`。它比较全部通道预期数据、检查连续性和故障，并输出观察到的接收速率。详见 [自测指南](selftest.md)。
 
 `continuous_with_previous` 只描述源地址、epoch 和帧号的相邻关系，不代表样本质量或链路健康。特别是 bit2=1 表示前处理未按时完成，此后连续帧号也不能证明实际采样时间连续；该会话不得继续用于声源定位，应排除时钟/调度故障后重启采集。饱和样本和帧结构错误同样须由应用按质量规则排除；bit1 的具体丢帧位置则依据 frame_id 缺口判断。
 

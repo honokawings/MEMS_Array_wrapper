@@ -1,5 +1,7 @@
 # 按键与LED映射诊断
 
+> 历史专项诊断：五键五灯映射专项工具。当前八路 CLK / 1.8 V 完整系统使用 UART SYS3，入口见[联调指南](../../../doc/system_uart_debug.md)与[当前发布报告](../../../doc/reports/clk8_18v_update.md)。下文位流及操作仅适用于该专项工具。
+
 器件：PG2L200H / FBB676 / -6。引脚来源：项目所附MINI硬件手册第13、34～35页，以及README中的麦克风时钟映射。两个工程独立于麦克风系统；源文件、约束和仿真集中在本目录，输出位于`fpga/build/IO_DIAG_DIRECT`和`fpga/build/IO_DIAG_WALK`。
 
 **实板结果：通过。** 用户确认直接版与流水版的五键、五灯均按表对应：KEY0→LED0、KEY1→LED1、KEY2→LED2、KEY3→LED3、KEY4→LED4。基础IO映射与按键/LED功能已验证，无需修改这些引脚。流水版也确认D18参考时钟能驱动扫描逻辑；尚未测量其准确频率，不代表完整系统的PLL链或网络功能通过。原始观察记录见 [board_observation.json](../../../log/io_map_diag/board_observation.json)。

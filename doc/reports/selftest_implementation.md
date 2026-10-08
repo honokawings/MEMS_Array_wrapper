@@ -1,5 +1,7 @@
 # 按键自测实现与验证记录
 
+> 历史记录：2026-09-17 按键自测版，包含后来发现的 PLL 参数问题。正文中的“当前/本次/下一步”指当时状态。当前推荐位流与未完成实板项目见[最新发布报告](clk8_18v_update.md)，版本关系见[版本历史](version_history.md)。
+
 日期：2026-09-17。新增 RTL、上位机参考包和 PG2L200H 位流已完成。11 项完整功能回归通过，本轮从编译到位流生成的完整构建及最终发布检查均为 PASS；发布范围为工程上板联调，尚未实板验证。
 
 ## 功能与要求对应
@@ -26,7 +28,7 @@
 
 证据目录：[log/selftest](../../log/selftest/)、[全量回归记录](../../log/full_regression.json)、[发布检查自测](../../log/fpga_audit_unit_tests_selftest.log)。ModelSim的自测编译与最终仿真均为零错误、零警告。
 
-上位机交付包：[M128_Host_Reference_v1.1.zip](../deliverables/M128_Host_Reference_v1.1.zip)，包含独立文档、严格解码器、接收器、自测比较器、6144字节预期表和真实报文样例。解压到独立目录后验证15个主机测试：14项通过，1项依赖完整FPGA回归fixture而明确跳过；原工程中该项已通过。包SHA-256为 `54941a97f583ffd067a637326a8da99910f127a187dd157a81860df827902358`。文档中的C/C++及Python片段也已运行，见 `log/selftest/protocol_doc_checks.json`。
+上位机交付包：`M128_Host_Reference_v1.1.zip`（历史包当前工作区缺失；现行资料见[上位机接口参考](../host_protocol_reference.md)及其链接的源码/样例），包含独立文档、严格解码器、接收器、自测比较器、6144字节预期表和真实报文样例。解压到独立目录后验证15个主机测试：14项通过，1项依赖完整FPGA回归fixture而明确跳过；原工程中该项已通过。包SHA-256为 `54941a97f583ffd067a637326a8da99910f127a187dd157a81860df827902358`。文档中的C/C++及Python片段也已运行，见 `log/selftest/protocol_doc_checks.json`。
 
 主机解析、连续性检查和缓冲写盘基准：16,000包、48,000帧用时0.398秒，约40,234包/秒；PCM为18,432,000字节、元数据为16,433,553字节。该结果不包含网卡接收或fsync持久化，证据为 `log/host_capture_benchmark_selftest.json`。
 

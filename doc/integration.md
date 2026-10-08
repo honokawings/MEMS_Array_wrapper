@@ -72,8 +72,10 @@ python lib/model/calibration.py --silence quiet.npy --tone common_tone.npy --fre
 
 ## 板级接入前
 
-板级工程已加入PG2L200H时钟/DDR原语及J10/J25/PHY0引脚约束。PDS构建入口为 `python fpga/scripts/build.py`，最终实现状态和可发布位流以 FPGA 实现报告为准。默认采样窗口在100ns器件最大tDV之外留约30.2ns，必须覆盖FPGA输出/输入路径、板级走线、建立时间和抖动等因素；其中外部走线预算取20ns，剩余约10.2ns留给内部IO路径与裕量。输入两级寄存器不替代采样窗口检查。
+板级工程包含 PG2L200H 时钟/DDR 原语及 J10/J25/J26/PHY0 约束。当前为八路同源 CLK、LVCMOS18 麦克风接口，需实测 L6/L7 VCCIO 与 MEMS VDD 为 1.8 V。推荐位流及构建方法见[上板指南](board_bringup.md)，本版未上板。
+
+默认原始引脚采样时刻约 138.346 ns，扣除麦克风最大 tDV=100 ns 后，留给输出/输入路径、往返布线与不确定度约 38.346 ns；其中外部传播预算为 20 ns。这是预算组成，不能直接作为布局布线后的剩余裕量。当前双角剩余预算见[发布报告](reports/clk8_18v_update.md)。两级输入寄存器不替代采样窗口检查。
 
 实现约需 192 KiB FIR 历史存储和 33 条宽乘法流水，但实际 RAM/DSP/逻辑数量由目标器件及推断方式决定。RTL 展开检查通过也不代表 122.88 MHz 布局布线时序已经收敛。
 
-上电由板级控制自动逐通道写入 `rtl/board/calibration_coeff.svh` 中的系数，再等待PHY千兆全双工就绪。默认ROM为空case，使用单位增益/零偏置。实测校准文件可用 `python lib/model/export_board_calibration.py doc/calibration/measured.txt` 导入，再重建位流。普通网线断连保留校准系数；KEY0复位或PLL失锁会重新装载ROM。
+上电由板级控制自动逐通道写入 `rtl/board/calibration_coeff.svh` 中的系数，再等待 PHY 千兆全双工及 ARP 对端地址就绪后启动采集。默认ROM为空case，使用单位增益/零偏置。实测校准文件可用 `python lib/model/export_board_calibration.py doc/calibration/measured.txt` 导入，再重建位流。普通网线断连保留校准系数；KEY0复位或PLL失锁会重新装载ROM。

@@ -1,6 +1,8 @@
 # PG2L200H 完整实现与位流发布报告（2026-09-16 历史版本）
 
-> 本报告对应增加按键自测之前的已发布版本。2026-09-17 当前源码已增加自测，旧 PASS 不覆盖这些修改；原始源码快照在 `fpga/build/archive/20260916_released_before_selftest/source_snapshot/`。新版状态见 [selftest_implementation.md](selftest_implementation.md)。
+> 历史记录：2026-09-16 尚未加入按键自测的最初整机版。正文中的“当前/本次/下一步”指当时状态。当前推荐位流与未完成实板项目见[最新发布报告](clk8_18v_update.md)，版本关系见[版本历史](version_history.md)。
+
+> 本报告对应增加按键自测之前的已发布版本。后续 2026-09-17 源码增加了自测，旧 PASS 不覆盖这些修改；原始源码快照在 `fpga/build/archive/20260916_released_before_selftest/source_snapshot/`。当时自测版状态见 [selftest_implementation.md](selftest_implementation.md)；最新版本见上方发布报告。
 
 **本次工程发布通过。** 2026-09-16 09:14:46 至 09:36:38（UTC+8）完成从编译、综合、映射、布局布线、双角时序分析到位流生成；09:37:00 最终发布检查为 `PASS`，`release_authorized=true`。硬件源文件在构建前后保持一致。
 

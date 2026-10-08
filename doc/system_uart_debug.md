@@ -1,10 +1,8 @@
 # 完整系统 UART 联调
 
-> 当前下载版本为八路同源时钟、1.8 V 接口的 `MEMS_Array_uart_clk8_18v_spread3_long`：[位流](../fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/generate_bitstream/mems_array_pg2l200h.sbit)、[发布记录](../fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/release.json)均已完成，最终 PASS。下载前须实测 L6/L7 VCCIO=1.8 V。新版本尚未上板；下文2026-09-19 14:13版本及实测属于旧四路、3.3 V 方案。UART命令和网络参数保持一致，见[当前发布报告](reports/clk8_18v_update.md)。
+[文档索引](README.md) · [上板指南](board_bringup.md) · [内部 PDM 自测](selftest.md)
 
-本版将已在独立诊断中通过实板测试的以太网 PLL 修正合入完整采集系统：`I=4,M=16,F=2,O=4,OPTIMIZED`，PFD=31.25 MHz，输出仍为 250 MHz，经专用二分频生成 125 MHz。音频、PDM、PCM 和 UDP 数据格式不变。 当前修正版同时在 ARP 就绪后释放采集，模式切换保留 MAC 地址缓存；ARP 接收与重试独立于采集会话。
-
-旧版正式构建为 `fpga/build/MEMS_Array_uart_arp_ready_routed/`，下载文件为其中 `generate_bitstream/mems_array_pg2l200h.sbit`。2026-09-19 14:13 生成，最终 `release.json` 为 **PASS**，`release_authorized=true`。位流 9,188,552 字节，SHA-256：`a5e591810e2e9855a1fb9ce4d14495da2d8babeb791bad667de825e0bf71fce3`。已 JTAG 下载并完成启动/模式切换数字链路验证；旧 `chain8` 位流和失败证据保留。详情见 [修正与实测报告](reports/arp_ready_fix.md)。
+适用版本：**`MEMS_Array_uart_clk8_18v_spread3_long`**（8 路同源 CLK、1.8 V MEMS）。[工程发布已通过](reports/clk8_18v_update.md)，本版尚未下载、尚未实板验证。先按上板指南设置并实测 L6/L7 VCCIO 与 MEMS VDD 为 1.8 V，再执行以下流程。历史四路版本的实测见[版本历史](reports/version_history.md)。
 
 ## 连接与串口控制
 
@@ -19,13 +17,13 @@
 | `s` / `h` | 请求状态快照 |
 | `r` | PLL/完整系统复位约 20 ms；回到真实麦克风模式；串口时基及命令计数不清零 |
 | `t` | 向原自检控制器产生一次 100 ms 按键脉冲；消抖后切换内部 PDM 自测，两次命令间隔至少 0.2 秒 |
-| `c` | 仅清除时钟历史故障；PHY/MAC 计数与其他错误需 `r` 重置 |
+| `c` | 仅清除时钟历史故障，不清除 PHY/MAC 计数或当前采集错误；完整系统复位用 `r` |
 
 命令无需换行，CR/LF 被忽略。回执表示命令被识别，动作完成以随后新鲜状态为准。自测覆盖内部 PDM 源、128 路滤波/校准、打包和发送；上位机还需独立核对收到的样本。模式切换中止旧采集会话，重载 128 路校准并启动新 epoch；旧会话 TX 错误在新会话开始时清除，当前会话错误仍锁存。
 
 ## 实板逐级验收
 
-2026-09-19 修正版已完成实板 PHY/MDIO → ARP → UDP 验证：FPGA 两级 BIST PASS，157,314,048 个通道样本逐位一致，启动与模式切换缺帧/溢出均为 0。模式切换期间 ARP 缓存保持有效，没有重新发起 ARP。恢复真实输入后，128 路全部为正满量程，阵列接入/供电与 DATA/CLK 状态仍待核对，不能将数字自检通过等同于声学验收。详见 [本轮报告](reports/arp_ready_fix.md)；[旧版失败记录](reports/uart_board_test_20260919.md) 保留作对比。
+以下为当前版本的验收方法，尚未执行。每次保存位流 SHA-256、UART 日志、电脑收包和样本校验结果，分开记录 FPGA 发送进展与电脑接收结果。
 
 下载新位流后可先运行只读采集：
 
@@ -49,9 +47,11 @@
 | UDP | FPGA `UdpSent` 持续增加，电脑 UDP 5000 实际收到包 | FPGA 计数只表示完成 GMII 发送；电脑无包时继续检查 RGMII/PHY/主机接收 |
 | 自测数据 | FPGA 两个 BIST PASS；电脑收到连续、无错误标志且逐位匹配的 128 路样本 | 队列丢包、epoch/帧号缺口、滤波/校准和包内标志 |
 
+自动摘要 `Stage` 按代码检查顺序给出首个未满足条件。等待 ARP 时采集被暂停，可能先显示 `ACQUISITION_NOT_READY`；应结合 `LinkUp`、`PeerValid` 和 ARP 计数定位，不能仅按摘要标签认定采集器故障。
+
 PHY 扫描不存在的地址会产生正常的读无 ACK，不能仅凭 `MdioReadNoAcks>0` 判失败。结合 `PhyReady`、配置步骤、失败快照及重试次数判断。写事务没有 Clause22 ACK，`MdioAck` 仅在 `MdioRead=true` 时有效。PHY 历史 `fault` 在自动重试后仍保留，软件复位才清除。
 
-在另一终端接收 5 秒 PCM（建议先等 UART 自测通过）：
+先等待 UART 自测通过，再在另一终端接收 5 秒 PCM。下面覆盖稳定区间；启动/模式切换另按后文验证：
 
 ```powershell
 python lib/host/receive_pcm.py --bind 192.168.10.1 --seconds 5 --output log/system_uart/board_capture/pcm
@@ -62,7 +62,7 @@ python lib/host/verify_selftest.py --capture log/system_uart/board_capture/pcm -
 
 如需二层证据，可复用 `log/hardware_debug/capture_npcap.py`，指定当前 FPGA 网卡的 Npcap 设备名，限定捕获 ARP 和 `192.168.10.2`。同时保存串口、PCAP 和 PCM 的时间与位流 SHA-256。无需修改防火墙来验证 PLL 或 MDIO。
 
-如需验证启动或模式切换的首包连续性，必须先启动电脑接收器，再发送 `r`/`t`。单独捕获已经稳定运行的几秒数据无法排除先前发生的启动丢帧。真实输入 `Clipped=true` 或 UDP flags bit0=1 时，先检查输入和幅度；不要将这些包当作正常音频。
+如需验证模式切换首包连续性，应先启动使用新前缀的电脑接收器，再发送 `t`，检查新 epoch 从第 96 帧开始。验证复位启动时，把 `r` 作为一次独立测试，并使用新的捕获文件，不能合并复位前后的同名 epoch。单独捕获稳定运行的几秒数据无法排除先前发生的启动丢帧。真实输入 `Clipped=true` 或 UDP flags bit0=1 时，先检查输入和幅度；不要将这些包当作正常音频。
 
 ## SYS3 协议
 
@@ -99,14 +99,8 @@ PHY 状态编号：0 复位、1 等待、2/3 读 ID1 请求/等待、4/5 读 ID2
 
 RX 帧计数只表示接收到 RX_DV，不保证一般帧的 FCS 正确；`ArpAccepted` 则经过原 ARP 解析器的格式、目标地址和 FCS 校验。相对频率计数无法测量绝对晶振误差、占空比或抖动。
 
-## 构建与仿真
+## 仿真与发布依据
 
-```powershell
-python sim/verify_all.py
-python -m unittest discover -s fpga/scripts/tests -v
-python fpga/scripts/build.py --build-name MEMS_Array_uart_arp_ready_routed --stage gen_bit_stream
-```
+完整回归入口为 `python sim/verify_all.py`；构建参数和新目录命名见[上板指南](board_bringup.md#构建与发布复现)。当前顶层为 99 个约束端口；12/12 功能回归与 146/146 检查器测试通过，见[当前发布报告](reports/clk8_18v_update.md)。
 
-新增 UART 集成测试使用完整顶层、真实 PHY 管理器/MDIO 控制器、引脚级 PHY 模型、ARP 应答及 UDP 线上 FCS 检查；覆盖正常自测、发送中切换模式、RX 停钟、MDIO 无 ACK、自动恢复与软件复位。集成测试的 PLL/DDR 使用数字替身；实际厂商 PLL/DDR 原语由全量回归的独立项目验证。上位机脚本还直接解析 RTL 输出的串口字符，以验证协议字段一致。
-
-发布检查要求 95 个实际引脚、全量回归、厂商 PLL 参数校验、双角时序、RGMII 实际物理偏差及 PDM 采样预算通过。新增 CDC 仍使用 7.5 ns 物理上界，27/122.88 MHz 超出 PDS 相位展开范围的提示单独审查，不放宽数据路径约束。
+UART 集成仿真使用完整顶层、真实 PHY 管理器/MDIO 控制器、引脚级 PHY 模型、ARP 应答及 UDP 线上 FCS 检查，覆盖自测、发送中切换、RX 停钟、MDIO 无 ACK、自动恢复和软件复位。集成测试的 PLL/DDR 使用数字替身；真实厂商原语由完整回归中的独立项目验证。上位机解析器直接解析 RTL 输出，核对 SYS3 字段一致性。

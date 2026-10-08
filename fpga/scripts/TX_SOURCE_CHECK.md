@@ -3,8 +3,10 @@
 `check_tx_source.py` 使用同一次布局布线的原始 `rtr.db`、约束、双角 SDF 和双角仿真网表，结果写入 JSON。`PASS` 的范围固定为 `engineering_board_bringup`，且 `unconditional_board_qualification=false`，不能解释为已经完成实板电气认证。
 
 ```powershell
-python fpga/scripts/check_tx_source.py --report-db fpga/build/MEMS_Array/report_timing/rtr.db --constraints fpga/constraints/timing.fdc --slow-sdf fpga/build/MEMS_Array/clock_audit/slow_sta.sdf --fast-sdf fpga/build/MEMS_Array/clock_audit/fast_sta.sdf --slow-netlist fpga/build/MEMS_Array/clock_audit/slow_sim.v --fast-netlist fpga/build/MEMS_Array/clock_audit/fast_sim.v --output fpga/build/MEMS_Array/clock_audit/tx_source.json
+python fpga/scripts/check_tx_source.py --report-db fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/report_timing/rtr.db --constraints fpga/constraints/timing.fdc --slow-sdf fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/clock_audit/slow_sta.sdf --fast-sdf fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/clock_audit/fast_sta.sdf --slow-netlist fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/clock_audit/slow_sim.v --fast-netlist fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/clock_audit/fast_sim.v --output log/tx_source_review.json
 ```
+
+示例复查当前推荐构建，输出到单独日志文件；需要保留多次复查时换用不同文件名。当前发布结论及真实板级待测项见[发布报告](../../doc/reports/clk8_18v_update.md)。
 
 ## 同沿引脚偏差
 

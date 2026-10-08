@@ -1,8 +1,69 @@
-# 无麦克风阵列自测
+# 内部 PDM 自测与上位机验收
 
-本功能在 FPGA 内产生模拟 PDM，经过实际的双相采集、滤波、校准和千兆 UDP 发送链路。无需连接麦克风阵列，但验证网络传输时必须连接已配置的千兆接收电脑。它不能检测麦克风供电、外部接线、IO 负载或实际声学性能。
+[文档索引](README.md) · [UART 联调](system_uart_debug.md) · [上板指南](board_bringup.md)
 
-## 按键与 LED
+适用版本：**`MEMS_Array_uart_clk8_18v_spread3_long`**。当前工程发布 PASS，本版实板测试待执行。内部产生确定性 PDM，经过双相采集、滤波、校准、打包与千兆 UDP 发送；不连接麦克风也可验证数字链路，不能检测外部供电、接线、时钟负载或声学性能。
+
+## 1. 准备
+
+按[上板指南](board_bringup.md)确认供电、下载当前位流。电脑网卡设为 `192.168.10.1/24`，连接千兆 PHY0，允许 UDP 5000。COM3 使用 115200 8N1、无流控，并关闭其他占用串口的程序。
+
+## 2. 通过 UART 进入自测
+
+在工程根目录执行：
+
+```powershell
+.\lib\host\capture_system_uart.ps1 -Port COM3 -Seconds 30 -SelfTest
+```
+
+脚本先确认 SYS3，再发 `r` 复位；等待时钟、校准、PHY 与 ARP 就绪后发 `t` 切换。结束后保持自测，便于继续接收数据。不要再盲发 `t`，因为它会切换回真实输入。
+
+| 判据 | 期望 |
+|---|---|
+| 时钟与状态新鲜度 | `ClocksHealthy=true`、`AudioFresh=true`、`EthFresh=true` |
+| 网络 | `PhyReady=true`、`LinkUp=true`、`PeerValid=true`，`UdpSent` 持续增长 |
+| 模式 / 本地自测 | `SelftestMode=true`、`SelftestPass=true`、`SelftestFail=false` |
+| 发送自测 | `SelftestTxPass=true`、`SelftestTxFail=false` |
+| 数据链错误 | `Overflow=false`、`ProcessingError=false`、`TxError=false`、`FramingError=false` |
+
+UART 摘要中的 `FpgaSelftestPass=true` 只覆盖 FPGA 端。默认本地通过门限为 48,000 帧，发送门限为 16,000 个完整 UDP 包；达标后持续检查，不会停止发送。详细字段、超时与快照边界见[UART 指南](system_uart_debug.md)。
+
+## 3. 电脑接收并逐样本比较
+
+使用未用过的文件前缀：
+
+```powershell
+python lib/host/receive_pcm.py --bind 192.168.10.1 --output captures/bist01 --seconds 10
+python lib/host/verify_selftest.py --capture captures/bist01 --min-frames 48000 --output captures/bist01.check.json
+```
+
+通过条件：`status=PASS`，`mismatching_frames=0`、`error_flag_packets=0`、`continuity_errors=0`，主机队列丢弃为 0。稳定阶段预期约 16,000 包/秒、48,000 帧/秒；短时间统计受电脑调度影响。
+
+接收器可以包含普通包，校验器会统计并跳过它们；不足 48,000 自测帧判失败。稳定区间 PASS 不覆盖先前的启动/切换过程。验证切换首包时，先开接收器，再发 `t`，按新 epoch 检查首帧与连续性。硬复位、重新下载或 PLL 失锁后使用新文件前缀。
+
+## 4. 恢复真实输入
+
+确认当前 `SelftestMode=true` 后发送一次 `t`：
+
+```powershell
+.\lib\host\capture_system_uart.ps1 -Port COM3 -Seconds 5 -Command t
+```
+
+等待新鲜状态中 `SelftestMode=false`。系统停止并清空旧流，重载正常校准 ROM，启动新 epoch。未接阵列时真实输入没有声学意义；自测包 bit4=1，不得送入定位算法。
+
+## 测试信号与覆盖范围
+
+
+pattern_id=1 的 PDM 每 1024 周期重复，稳态输出每 16 PCM 帧重复。128 路具有不同直流特征，叠加四组相位的约 3 kHz 方波成分；通道错位、相位错位和多种数据故障会导致预期值不一致。自测使用单位增益和零偏置，退出后恢复正常 ROM 配置。
+
+FPGA 的同步 ROM 比较器核对每次有效 PCM 传递的数值、通道号、首尾标志和 64 位帧号；无 PCM 进展超过 100 ms 也报错。此时间包含正常 50 ms 启动等待。网络域统计完整 UDP FCS 发出事件，无发送进展超过 1 秒报错。本次自测模式内累计等待 10 秒仍未达到本地及发送目标，故障锁存超时（兼容 LED4 指示）。
+
+报文 bit4=1 表示模拟数据，bit5=1 表示数字自测失败。自测仍使用相同 48 kHz / 24 位 / 128 路及同样带宽。UART `SelftestTxPass` 和兼容 LED3 只能证明发送端进展；必须结合上位机逐样本比较确认 PC 实际收到完整、连续数据。
+
+
+## 兼容按键与 LED 定义
+
+以下仅记录硬件兼容功能，现行验收采用上面的 UART 与电脑数据检查。
 
 手册依据为《盘古MINI系列开发板硬件指导手册_V1.3》34～35 页。KEY1 按下为低，LED 输出高时亮。
 
@@ -18,31 +79,8 @@
 
 LED2 和 LED3 点亮后自测继续运行并继续检查；不是只发送一批数据后停止。LED4 亮时整个自测应判失败，即便其他灯仍亮。掉线会清空流并重新开始自测计数，模式保持；已经锁存的 LED4 不因短暂恢复自动清除。
 
-## 使用步骤
-
-1. 使用带自测功能的新工程/位流，核对板卡及 IO 电压；旧 2026-09-16 位流没有本功能。新构建输出目录为 `fpga/build/MEMS_Array_selftest/`，以其中的最终 `release.json` 为准。
-2. 电脑网卡设置为 `192.168.10.1/24`，通过千兆口连接 FPGA，允许 UDP 5000。FPGA 为 `192.168.10.2`。
-3. 在工程根目录开始采集，然后按 KEY1。LED1 亮；PHY 协商、校准重载、50 ms PDM 启动和滤波稳态后开始发送。正常情况下再过约 1 秒 LED2、LED3 亮，LED4 保持灭。无链路/无 ARP 应答不会显示发送通过。
-
-```powershell
-python lib/host/receive_pcm.py --output captures/bist01 --seconds 10
-python lib/host/verify_selftest.py --capture captures/bist01 --min-frames 48000 --output captures/bist01.check.json
-```
-
-4. 检查结果 `status=PASS`、mismatching_frames=0、error_flag_packets=0、continuity_errors=0，且主机丢弃计数为 0；检查稳定区间吞吐接近 16,000 包/秒、48,000 帧/秒。PC 调度或首次缓冲填充可影响短时间统计。
-5. 再按 KEY1 退出自测。系统暂停并清空旧流，重新装载正常校准系数，重新启动真实麦克风采集；epoch 改变。若阵列未接，此时真实输入没有有效声学意义。
-
-接收器可包含切换前的普通包，校验工具会明确统计并跳过它们。只有自测包参与预期数值核对；不足 48,000 自测帧会判失败。硬复位、重烧录或 PLL 失锁后换新的文件前缀，避免 epoch 重用混淆。
-
-## 测试信号与覆盖范围
-
-pattern_id=1 的 PDM 每 1024 周期重复，稳态输出每 16 PCM 帧重复。128 路具有不同直流特征，叠加四组相位的约 3 kHz 方波成分；通道错位、相位错位和多种数据故障会导致预期值不一致。自测使用单位增益和零偏置，退出后恢复正常 ROM 配置。
-
-FPGA 的同步 ROM 比较器核对每次有效 PCM 传递的数值、通道号、首尾标志和 64 位帧号；无 PCM 进展超过 100 ms 也报错。此时间包含正常 50 ms 启动等待。网络域统计完整 UDP FCS 发出事件，无发送进展超过 1 秒报错。本次自测模式内累计等待 10 秒仍未达到本地及发送目标，LED4 锁存超时。
-
-报文 bit4=1 表示模拟数据，bit5=1 表示数字自测失败。自测仍使用相同 48 kHz / 24 位 / 128 路及同样带宽。LED3 只能证明发送端进展；必须结合上位机逐样本比较确认 PC 实际收到完整、连续数据。
-
 ## 仿真与复现
+
 
 ```powershell
 python sim/net/run_selftest.py
