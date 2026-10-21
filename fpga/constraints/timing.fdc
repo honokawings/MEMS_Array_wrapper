@@ -118,6 +118,10 @@ set_max_delay 20.000 -datapath_only -to [get_ports {led[*]}]
 set_false_path -hold -to [get_ports {led[*]}]
 
 # UART supervision uses an independent reference clock and coherent CDC snapshots.
+# The bidirectional sys27/audio122 7.500 ns whole-domain bounds also cover all
+# 56 held audio_config_cdc payload bits and first-stage request/ACK inputs.
+# The request/ACK chains are two preserved async_reg stages; alive is a local
+# two-stage asynchronous bridge-reset release, not a per-bit payload crossing.
 set_max_delay 7.500 -datapath_only -from [get_clocks ref125] -to [get_clocks sys27]
 set_false_path -hold -from [get_clocks ref125] -to [get_clocks sys27]
 set_max_delay 7.500 -datapath_only -from [get_clocks audio96] -to [get_clocks sys27]
@@ -142,5 +146,25 @@ set_output_delay -clock sys27 -max 0.000 [get_ports uart_tx]
 set_output_delay -clock sys27 -min 0.000 [get_ports uart_tx]
 set_max_delay 20.000 -datapath_only -to [get_ports uart_tx]
 set_false_path -hold -to [get_ports uart_tx]
+# PCM5102 monitor pads are registered on audio122. DIN/LRCK change only on
+# BCK falling transitions, 20 audio cycles before/after a BCK rising sample.
+# Physical output bounds are independently checked with both routed SDF corners
+# by check_i2s_budget.py; no generated internal BCK clock or multicycle waiver.
+set_output_delay -clock audio122 -max 0.000 [get_ports i2s_sck]
+set_output_delay -clock audio122 -min 0.000 [get_ports i2s_sck]
+set_max_delay 4.000 -datapath_only -to [get_ports i2s_sck]
+set_false_path -hold -to [get_ports i2s_sck]
+set_output_delay -clock audio122 -max 0.000 [get_ports i2s_bck]
+set_output_delay -clock audio122 -min 0.000 [get_ports i2s_bck]
+set_max_delay 4.000 -datapath_only -to [get_ports i2s_bck]
+set_false_path -hold -to [get_ports i2s_bck]
+set_output_delay -clock audio122 -max 0.000 [get_ports i2s_din]
+set_output_delay -clock audio122 -min 0.000 [get_ports i2s_din]
+set_max_delay 20.000 -datapath_only -to [get_ports i2s_din]
+set_false_path -hold -to [get_ports i2s_din]
+set_output_delay -clock audio122 -max 0.000 [get_ports i2s_lrck]
+set_output_delay -clock audio122 -min 0.000 [get_ports i2s_lrck]
+set_max_delay 20.000 -datapath_only -to [get_ports i2s_lrck]
+set_false_path -hold -to [get_ports i2s_lrck]
 # PLL LOCK outputs are asynchronous indications, sampled by the observer.
 set_false_path -from [get_pins {clocks.u_pll_96.u_gpll/LOCK clocks.u_pll_audio.u_gpll/LOCK clocks.u_pll_eth.u_gpll/LOCK}]

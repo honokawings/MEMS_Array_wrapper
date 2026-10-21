@@ -9,6 +9,9 @@ module board_uart_diagnostics #(
     input wire uart_rx,physical_reset_n,input wire [2:0] pll_lock,
     input wire common_arst_n,audio_rst_n,eth_rst_n,input wire [4:0] controller_led,
     input wire [127:0] audio_status,rx_status,input wire [575:0] eth_status,
+    input wire [255:0] i2s_status,input wire audio_gain_cfg_ready,
+    output wire audio_i2s_enable,output wire [6:0] audio_i2s_channel,
+    output wire [23:0] audio_even_gain,audio_odd_gain,output wire audio_gain_cfg_valid,
     output wire uart_tx,system_reset_n,mode_key_n
 );
     wire [7:0] startup;
@@ -18,10 +21,11 @@ module board_uart_diagnostics #(
     wire rx_valid,rx_error;
     diag_uart_rx #(.CLKS_PER_BIT(UART_DIV)) receiver(.clk(ref_clk),.rst_n(observer_rst_n),
         .rx(uart_rx),.data(rx_data),.valid(rx_valid),.error(rx_error));
-    wire cmd_reset=rx_valid && rx_data==8'h72;
-    wire cmd_clear=rx_valid && rx_data==8'h63;
-    wire cmd_toggle=rx_valid && rx_data==8'h74;
-    wire cmd_status=rx_valid && (rx_data==8'h73 || rx_data==8'h68);
+    wire legacy_valid;
+    wire cmd_reset=legacy_valid && rx_data==8'h72;
+    wire cmd_clear=legacy_valid && rx_data==8'h63;
+    wire cmd_toggle=legacy_valid && rx_data==8'h74;
+    wire cmd_status=legacy_valid && (rx_data==8'h73 || rx_data==8'h68);
     wire command=cmd_reset|cmd_clear|cmd_toggle|cmd_status;
     reg [31:0] reset_count,mode_count;
     reg [3:0] clear_count;
@@ -42,7 +46,7 @@ module board_uart_diagnostics #(
             if(cmd_clear)clear_count<=15;else if(clear_count!=0)clear_count<=clear_count-1'b1;
             if(command)begin command_count<=command_count+1'b1;last_command<=rx_data;end
             if(rx_error)rx_error_count<=rx_error_count+1'b1;
-            if(rx_valid && !command && rx_data!=8'h0d && rx_data!=8'h0a)unknown_count<=unknown_count+1'b1;
+            if(legacy_valid && !command && rx_data!=8'h0d && rx_data!=8'h0a)unknown_count<=unknown_count+1'b1;
         end
     end
     wire [63:0] gray,deltas;
@@ -77,7 +81,26 @@ module board_uart_diagnostics #(
     assign words[319:192]=audio_snapshot;
     assign words[895:320]=eth_snapshot; // PHY9 words then network9 words
     assign words[1023:896]=rx_snapshot;
+    wire desired_enable,config_pending,audio_reset_released;
+    wire [6:0] desired_channel;
+    wire [23:0] desired_even_gain,desired_odd_gain;
+    wire audio_launch,audio_fresh,audio_busy;
+    wire [255:0] control_snapshot;
+    wire [7:0] aux_data;
+    wire aux_valid,aux_last,aux_ready;
+    audio_config_cdc configuration(.ref_clk(ref_clk),.ref_rst_n(observer_rst_n),.audio_clk(audio_clk),.audio_rst_n(audio_rst_n),
+        .desired_enable(desired_enable),.desired_channel(desired_channel),.desired_even_gain(desired_even_gain),.desired_odd_gain(desired_odd_gain),
+        .pending(config_pending),.audio_reset_released(audio_reset_released),.audio_i2s_enable(audio_i2s_enable),
+        .audio_i2s_channel(audio_i2s_channel),.audio_even_gain(audio_even_gain),.audio_odd_gain(audio_odd_gain),
+        .audio_gain_cfg_valid(audio_gain_cfg_valid),.audio_gain_cfg_ready(audio_gain_cfg_ready));
+    diag_snapshot_cdc #(.WIDTH(256)) control_bridge(.dst_clk(ref_clk),.dst_rst_n(observer_rst_n),.launch(audio_launch),
+        .src_clk(audio_clk),.src_data(i2s_status),.data(control_snapshot),.valid(audio_fresh),.busy(audio_busy));
+    uart_audio_control control(.clk(ref_clk),.rst_n(observer_rst_n),.rx_data(rx_data),.rx_valid(rx_valid),.rx_error(rx_error),
+        .legacy_valid(legacy_valid),.desired_enable(desired_enable),.desired_channel(desired_channel),
+        .desired_even_gain(desired_even_gain),.desired_odd_gain(desired_odd_gain),.config_pending(config_pending),
+        .audio_reset_released(audio_reset_released),.snapshot_launch(audio_launch),.snapshot_data(control_snapshot),.snapshot_fresh(audio_fresh),
+        .tx_data(aux_data),.tx_valid(aux_valid),.tx_last(aux_last),.tx_ready(aux_ready));
     board_uart_report #(.UART_DIV(UART_DIV),.REPORT_CYCLES(REPORT_CYCLES),.MS_CYCLES(MS_CYCLES)) report(
         .clk(ref_clk),.rst_n(observer_rst_n),.request(command|rx_error),.status_words(words),
-        .snapshot_launch(launch),.tx(uart_tx));
+        .aux_data(aux_data),.aux_valid(aux_valid),.aux_last(aux_last),.aux_ready(aux_ready),.snapshot_launch(launch),.tx(uart_tx));
 endmodule

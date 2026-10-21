@@ -5,10 +5,12 @@
 module mems_ethernet_core #(
     parameter integer STARTUP_CYCLES=153600,
     parameter integer SETTLE_FRAMES=96,
+    parameter integer DC_ESTIMATE_LOG2=0,
     parameter integer ARP_RETRY_CYCLES=125000000,
     parameter integer SELFTEST_FRAMES=48000,
     parameter integer SELFTEST_TIMEOUT=12288000,
     parameter integer SELFTEST_TX_PACKETS=16000,
+    parameter integer INDEPENDENT_AUDIO=0,
     parameter [47:0] LOCAL_MAC=48'h020000000128,
     parameter [31:0] LOCAL_IP=32'hc0a80a02,
     parameter [31:0] PEER_IP=32'hc0a80a01,
@@ -34,7 +36,14 @@ module mems_ethernet_core #(
     output wire selftest_pass,selftest_fail,
     output reg selftest_tx_pass,selftest_tx_fail,
     output wire [127:0] debug_audio,output wire [287:0] debug_eth,
-    output wire [127:0] debug_rx
+    output wire [127:0] debug_rx,
+    input tri0 parity_cfg_valid,
+    input wire [23:0] parity_even_gain,parity_odd_gain,
+    output wire parity_cfg_ready,
+    output wire monitor_pcm_valid,
+    output wire [6:0] monitor_pcm_channel,
+    output wire signed [23:0] monitor_pcm_data,
+    output wire [23:0] parity_active_even_gain,parity_active_odd_gain
 );
     wire audio_rst_n,eth_rst_n,audio_stream_rst_n,eth_stream_rst_n;
     reset_release audio_reset(.clk(audio_clk),.arst_n(rst_n),.rst_n(audio_rst_n));
@@ -49,6 +58,9 @@ module mems_ethernet_core #(
     reset_release audio_stream_reset(.clk(audio_clk),.arst_n(stream_arst_n),.rst_n(audio_stream_rst_n));
     reset_release eth_stream_reset(.clk(eth_clk),.arst_n(stream_arst_n),.rst_n(eth_stream_rst_n));
     assign acquisition_active=audio_stream_rst_n;
+    // Board listening continues without Ethernet; portable default preserves
+    // the original network-gated stream and built-in oracle startup behavior.
+    wire frontend_enable=INDEPENDENT_AUDIO && !selftest_mode ? (audio_rst_n && run) : audio_stream_rst_n;
     reg was_streaming;
     always @(posedge eth_clk) begin
         if(!eth_rst_n) begin was_streaming<=0;stream_epoch<=0;end
@@ -61,6 +73,8 @@ module mems_ethernet_core #(
     wire [6:0] pcm_channel;
     wire [63:0] pcm_frame_id;
     wire pcm_valid,pcm_first,pcm_last,pcm_ready;
+    wire dc_ready;
+    wire [127:0] dc_rejected;
     reg [31:0] debug_pcm_samples,debug_pcm_frame;
     always @(posedge audio_clk or negedge audio_rst_n) begin
         if(!audio_rst_n)begin debug_pcm_samples<=0;debug_pcm_frame<=0;end
@@ -69,13 +83,17 @@ module mems_ethernet_core #(
         end
     end
     assign debug_audio={debug_pcm_frame,debug_pcm_samples,dropped_frames,
-        {23'b0,selftest_fail,selftest_pass,clipped,processing_error,overflow,selftest_mode,
+        {17'b0,((DC_ESTIMATE_LOG2!=0) && (|dc_rejected)),
+         ((DC_ESTIMATE_LOG2!=0) && dc_ready),(DC_ESTIMATE_LOG2!=0),
+         3'b0,
+         selftest_fail,selftest_pass,clipped,processing_error,overflow,selftest_mode,
          run,acquisition_active,started}};
     wire [255:0] debug_network;
     // Net flags [11:0] are from MAC; [12:15] add packetizer/BIST/stream state.
     assign debug_eth={debug_network[255:192],stream_epoch,debug_network[191:32],
         {16'b0,eth_stream_rst_n,selftest_tx_fail,selftest_tx_pass,framing_error,debug_network[11:0]}};
     wire frontend_cfg_ready;
+    wire frontend_parity_cfg_ready;
     wire [63:0] synthetic_pdm;
     wire selftest_active=selftest_mode && audio_stream_rst_n;
     pdm_selftest_source stimulus(.clk(audio_clk),.rst_n(audio_rst_n),.enable(selftest_active),
@@ -112,14 +130,20 @@ module mems_ethernet_core #(
     // The board and core have independent reset release synchronizers. Do not
     // acknowledge boot writes until this core can actually retain coefficients.
     assign cfg_ready=audio_rst_n && frontend_cfg_ready;
-    mems_array_top #(.STARTUP_CYCLES(STARTUP_CYCLES),.SETTLE_FRAMES(SETTLE_FRAMES)) frontend(
-        .clk(audio_clk),.rst_n(audio_rst_n),.enable(audio_stream_rst_n),
+    assign parity_cfg_ready=audio_rst_n && frontend_parity_cfg_ready;
+    mems_array_top #(.STARTUP_CYCLES(STARTUP_CYCLES),.SETTLE_FRAMES(SETTLE_FRAMES),
+        .DC_ESTIMATE_LOG2(DC_ESTIMATE_LOG2)) frontend(
+        .clk(audio_clk),.rst_n(audio_rst_n),.enable(frontend_enable),
         .pdm_data(selftest_mode ? synthetic_pdm : pdm_data),
         .mic_clk(mic_clk),.started(started),.cfg_valid(cfg_valid),.cfg_channel(cfg_channel),
         .cfg_gain(cfg_gain),.cfg_offset(cfg_offset),.cfg_ready(frontend_cfg_ready),.pcm_data(pcm_data),
         .pcm_channel(pcm_channel),.pcm_frame_id(pcm_frame_id),.pcm_valid(pcm_valid),
         .pcm_first(pcm_first),.pcm_last(pcm_last),.pcm_ready(pcm_ready),
-        .overflow(overflow),.dropped_frames(dropped_frames),.processing_error(processing_error),.clipped(clipped));
+        .overflow(overflow),.dropped_frames(dropped_frames),.processing_error(processing_error),.clipped(clipped),
+        .parity_cfg_valid(parity_cfg_valid),.parity_even_gain(parity_even_gain),.parity_odd_gain(parity_odd_gain),
+        .parity_cfg_ready(frontend_parity_cfg_ready),.parity_bypass(selftest_mode),
+        .parity_active_even_gain(parity_active_even_gain),.parity_active_odd_gain(parity_active_odd_gain),
+        .dc_ready(dc_ready),.dc_rejected(dc_rejected));
     wire [99:0] sample_word;
     wire sample_valid,sample_ready;
     // Elastic output register separates the wide frame-RAM read/multiplexer
@@ -128,14 +152,20 @@ module mems_ethernet_core #(
     reg [99:0] audio_sample;
     reg audio_sample_valid;
     wire audio_sample_ready;
-    assign pcm_ready=audio_stream_rst_n && (!audio_sample_valid || audio_sample_ready);
+    reg network_frame_started;
+    assign pcm_ready=audio_stream_rst_n ? (!audio_sample_valid || audio_sample_ready) : frontend_enable;
+    assign monitor_pcm_valid=pcm_valid && pcm_ready;
+    assign monitor_pcm_channel=pcm_channel;
+    assign monitor_pcm_data=pcm_data;
     always @(posedge audio_clk or negedge audio_stream_rst_n) begin
         if(!audio_stream_rst_n) begin
             audio_sample<=0;
             audio_sample_valid<=0;
+            network_frame_started<=0;
         end else if(pcm_ready) begin
-            audio_sample_valid<=pcm_valid;
-            if(pcm_valid)
+            if(pcm_valid && pcm_first) network_frame_started<=1;
+            audio_sample_valid<=pcm_valid && (network_frame_started || pcm_first);
+            if(pcm_valid && (network_frame_started || pcm_first))
                 audio_sample<={processing_error,overflow,clipped,pcm_frame_id,pcm_channel,pcm_first,pcm_last,pcm_data};
         end
     end

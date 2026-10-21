@@ -22,7 +22,8 @@ module tb_system_uart;
         .UART_RESET_CYCLES(32400),.UART_MODE_CYCLES(2700),.UART_WINDOW_CYCLES(2700),.UART_PRESCALE_BITS(6)) dut(
         .sys_clk_27(ref_clk),.sys_clk_125_p(eth_clk),.sys_clk_125_n(~eth_clk),.reset_n(reset_n),
         .selftest_key_n(1'b1),.uart_rx(uart_rx),.uart_tx(uart_tx),.led(led),.pdm_data(64'b0),
-        .mic_clk(mic_clk),.PHY0_RXC(rx_clk),.PHY0_RXCTRL(1'b0),.PHY0_RXD(4'b0),
+        .mic_clk(mic_clk),.i2s_sck(),.i2s_bck(),.i2s_lrck(),.i2s_din(),
+        .PHY0_RXC(rx_clk),.PHY0_RXCTRL(1'b0),.PHY0_RXD(4'b0),
         .PHY0_TXC(txc),.PHY0_TXCTRL(txctl),.PHY0_TXD(txd),.PHY0_MDC(mdc),.PHY0_MDIO(mdio),.RSTN_OUT(phy_rst_n));
     defparam dut.phy.RESET_CYCLES=32,dut.phy.SETTLE_CYCLES=64,dut.phy.POLL_CYCLES=100,dut.phy.RETRY_CYCLES=1000;
     integer checks=0,lines=0,raw_file,tx_count=0,arp_count=0,udp_count=0;

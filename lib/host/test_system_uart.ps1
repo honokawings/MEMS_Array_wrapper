@@ -1,5 +1,6 @@
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'parse_system_uart.ps1')
+. (Join-Path $PSScriptRoot 'audio_uart.ps1')
 $words=[uint32[]]::new(34)
 $words[0]=123;$words[1]=4567;$words[2]=0x0780783F
 $words[3]=0x03AA04C5;$words[4]=0x04C504B0;$words[5]=0x00740002;$words[7]=7
@@ -12,6 +13,18 @@ $line='SYS3 '+(($words | ForEach-Object { '{0:X8}' -f $_ }) -join ' ')
 $row=ConvertFrom-SystemUartLine $line
 if ($null -eq $row -or !$row.ClocksHealthy -or $row.FreshMask -ne 7) { throw 'Clock/fresh fields' }
 if (!$row.SelftestMode -or !$row.SelftestPass -or !$row.SelftestTxPass -or !$row.CalibrationDone -or !$row.Heartbeat) { throw 'Audio/BIST fields' }
+if ($row.DcCorrectionEnabled -or $row.DcEstimationFinished -or $row.DcAnyChannelRejected) { throw 'Legacy DC bits must be absent' }
+$words[8]=$words[8] -bor 0x7000
+$dcRow=ConvertFrom-SystemUartLine ('SYS3 '+(($words | ForEach-Object { '{0:X8}' -f $_ }) -join ' '))
+if (!$dcRow.DcCorrectionEnabled -or !$dcRow.DcEstimationFinished -or !$dcRow.DcAnyChannelRejected -or !$dcRow.CalibrationDone -or !$dcRow.Heartbeat) { throw 'DC diagnostic bits must coexist with existing board status' }
+$words[8]=$words[8] -band 0xFFFF8FFF
+foreach ($dcMask in @(0x1000,0x2000,0x4000)) {
+    $dcWords=$words.Clone();$dcWords[8]=$dcWords[8] -bor $dcMask
+    $one=ConvertFrom-SystemUartLine ('SYS3 '+(($dcWords | ForEach-Object { '{0:X8}' -f $_ }) -join ' '))
+    if ($one.DcCorrectionEnabled -ne ($dcMask -eq 0x1000) -or
+        $one.DcEstimationFinished -ne ($dcMask -eq 0x2000) -or
+        $one.DcAnyChannelRejected -ne ($dcMask -eq 0x4000)) { throw 'DC one-hot status decode' }
+}
 if ($row.PhyId -ne '001CC916' -or !$row.PhyReady -or !$row.LinkUp -or $row.PhyAddress -ne 5 -or $row.ConfigStep -ne 27 -or $row.PhyState -ne 9) { throw 'PHY fields' }
 if (!$row.MdioRead -or !$row.MdioAck -or $row.MdioAddress -ne 5 -or $row.MdioRegister -ne 26 -or $row.MdioReadData -ne '102C') { throw 'MDIO fields' }
 if ($row.PeerMac -ne '102030405060' -or !$row.PeerValid -or $row.UdpSent -ne 16000 -or $row.RxBytes -ne 72) { throw 'Network fields' }
@@ -24,6 +37,9 @@ $row=ConvertFrom-SystemUartLine ('SYS3 '+(($words | ForEach-Object { '{0:X8}' -f
 if ($row.FailureState -ne 8 -or $row.FailureStep -ne 7 -or !$row.FailureRead -or $row.FailureAck -or $row.FailureRegister -ne 21 -or $row.FailureData -ne 'AC50') { throw 'Latched failure decode' }
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $rows=@(Get-Content -LiteralPath (Join-Path $root 'log/system_uart/rtl_uart.log') | Where-Object { $_ } | ForEach-Object {
+    if($_.StartsWith('I2S1 ') -or $_.StartsWith('GAIN1 ')){
+        if($null -eq (ConvertFrom-AudioUartLine $_)){throw 'RTL independent audio line failed host parsing'};return
+    }
     $value=ConvertFrom-SystemUartLine $_
     if ($null -eq $value) { throw 'RTL UART line failed host parsing' };$value
 })

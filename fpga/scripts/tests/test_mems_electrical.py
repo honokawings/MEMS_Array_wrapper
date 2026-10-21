@@ -44,7 +44,7 @@ class MemsElectrical(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'README.md').write_text(readme,encoding='utf8')
             with patch.object(build,'ROOT',root):mapping=build.prepare_pins(True)
-            self.assertEqual(len(mapping),99)
+            self.assertEqual(len(mapping),103)
             fdc=(root/'fpga/constraints/board_pins.fdc').read_text()
             for i in range(8):
                 for attr,value in [('VCCIO','1.8'),('STANDARD','LVCMOS18'),('DRIVE','16'),('SLEW','FAST')]:
@@ -55,11 +55,40 @@ class MemsElectrical(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'README.md').write_text(readme,encoding='utf8')
             with patch.object(build,'ROOT',root):mapping=build.prepare_pins()
-            self.assertEqual(len(mapping),99)
+            self.assertEqual(len(mapping),103)
             mic_ports={p:pin for p,pin in mapping.items() if p.startswith(('pdm_data','mic_clk'))}
             self.assertEqual(len(mic_ports),72)
             self.assertTrue(all(build.MIC_PIN_BANK[pin] in ('L6','L7') for pin in mic_ports.values()))
             self.assertEqual({p:build.MIC_PIN_BANK[pin] for p,pin in mic_ports.items() if p.startswith('mic_clk')},
                              {f'mic_clk[{i}]':'L6' for i in range(8)})
+
+    def test_i2s_map_is_precise_and_electrical_attributes_are_33v_8ma(self):
+        readme=(build.ROOT/'README.md').read_text(encoding='utf8')
+        self.assertEqual(build.i2s_pins_from_readme(readme),{'i2s_sck':'R21','i2s_bck':'N19','i2s_din':'M25','i2s_lrck':'T25'})
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'README.md').write_text(readme,encoding='utf8')
+            with patch.object(build,'ROOT',root):build.prepare_pins()
+            fdc=(root/'fpga/constraints/board_pins.fdc').read_text()
+            for port in ('i2s_sck','i2s_bck','i2s_din','i2s_lrck'):
+                for attr,value in [('DIRECTION','OUTPUT'),('VCCIO','3.3'),('STANDARD','LVCMOS33'),('DRIVE','8'),('SLEW','FAST')]:
+                    self.assertIn(f'define_attribute {{p:{port}}} {{PAP_IO_{attr}}} {{{value}}}',fdc)
+
+    def test_missing_duplicate_wrong_bank_i2s_map_preserves_constraints(self):
+        readme=(build.ROOT/'README.md').read_text(encoding='utf8')
+        cases=(readme.replace('R21-SCK','R21-'),readme.replace('R20-','R20-SCK',1),
+               readme.replace('R21-SCK','AC26-SCK'),readme.replace('N19-BCK','R21-BCK'))
+        for text in cases:
+            with self.subTest(text=text[:40]),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);(root/'README.md').write_text(text,encoding='utf8')
+                pins=root/'fpga/constraints/board_pins.fdc';pins.parent.mkdir(parents=True);pins.write_text('preserved')
+                with patch.object(build,'ROOT',root),self.assertRaises(ValueError):build.prepare_pins()
+                self.assertEqual(pins.read_text(),'preserved')
+
+    def test_i2s_collision_with_existing_io_preserves_constraints(self):
+        readme=(build.ROOT/'README.md').read_text(encoding='utf8').replace('R21-SCK','P19-SCK')
+        readme=re.sub(r'\b[A-Z]{1,2}\d+\s*-\s*DATA0\b','P19-DATA0',readme)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'README.md').write_text(readme,encoding='utf8')
+            with patch.object(build,'ROOT',root),self.assertRaisesRegex(ValueError,'Conflicting package-pin'):build.prepare_pins(True)
 
 if __name__=='__main__':unittest.main()

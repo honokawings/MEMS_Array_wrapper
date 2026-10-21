@@ -15,6 +15,20 @@ MIC_BANK_PINS = {
 }
 MIC_PIN_BANK = {pin: bank for bank,pins in MIC_BANK_PINS.items() for pin in pins.split()}
 
+def i2s_pins_from_readme(text):
+    section=re.search(r'^### J10\b[^\n]*\n(.*?)(?=^### |\Z)',text,re.M|re.S)
+    if section is None:raise ValueError('README is missing the reviewed J10 I2S map')
+    labels={'SCK':'i2s_sck','BCK':'i2s_bck','DIN':'i2s_din','LRCK':'i2s_lrck'}
+    mapping={}
+    for pin,label in re.findall(r'\b([A-Z]{1,2}\d+)\s*-\s*(SCK|BCK|DIN|LRCK)\b',section[1]):
+        port=labels[label]
+        if port in mapping:raise ValueError('Duplicate I2S label in README J10: '+label)
+        if MIC_PIN_BANK.get(pin)!='L5':raise ValueError('I2S requires reviewed fixed 3.3 V Bank L5: '+pin)
+        mapping[port]=pin
+    if set(mapping)!=set(labels.values()):raise ValueError('README J10 must map all four I2S labels SCK/BCK/DIN/LRCK')
+    if len(set(mapping.values()))!=4:raise ValueError('Duplicate I2S package pin in README')
+    return mapping
+
 def microphone_electrical(port, pin, l5_level_shifted=False):
     bank = MIC_PIN_BANK.get(pin)
     if bank not in ('L5','L6','L7'):
@@ -43,6 +57,7 @@ def prepare_pins(l5_level_shifted=False):
     if mapping.keys() != expected:
         raise ValueError(f'Incomplete microphone map: missing={expected-mapping.keys()}, extra={mapping.keys()-expected}')
     microphone_standards = {port:microphone_electrical(port,pin,l5_level_shifted) for port,pin in mapping.items()}
+    mapping.update(i2s_pins_from_readme(text))
     ethernet = dict(re.findall(r'\|\s*(PHY0_[A-Z]+(?:\[\d\])?|RSTN_OUT)\s*\|[^|]*\|\s*([A-Z]{1,2}\d+)\s*\|',text))
     if len(ethernet) != 15:
         raise ValueError('README must contain all 15 PHY pins')
@@ -59,7 +74,7 @@ def prepare_pins(l5_level_shifted=False):
              '# L5 DATA, if present, requires external 1.8-to-3.3 V translation.']
     for port,pin in mapping.items():
         direction = 'INPUT'
-        if port.startswith(('mic_clk','PHY0_TX','led[')) or port in ('PHY0_MDC','RSTN_OUT','uart_tx'):
+        if port.startswith(('mic_clk','PHY0_TX','led[','i2s_')) or port in ('PHY0_MDC','RSTN_OUT','uart_tx'):
             direction='OUTPUT'
         elif port == 'PHY0_MDIO':
             direction='INOUT'
@@ -69,21 +84,90 @@ def prepare_pins(l5_level_shifted=False):
         for attr,value in [('DIRECTION',direction),('LOC',pin),('VCCIO',voltage),('STANDARD',standard)]:
             lines.append(f'define_attribute {{p:{port}}} {{PAP_IO_{attr}}} {{{value}}}')
         if direction != 'INPUT':
-            drive = '16' if port.startswith(('PHY0_TX','mic_clk')) else '4'
+            drive = '8' if port.startswith('i2s_') else '16' if port.startswith(('PHY0_TX','mic_clk')) else '4'
             lines += [f'define_attribute {{p:{port}}} {{PAP_IO_DRIVE}} {{{drive}}}',
                       f'define_attribute {{p:{port}}} {{PAP_IO_SLEW}} {{FAST}}']
     (out/'board_pins.fdc').write_text('\n'.join(lines)+'\n',encoding='ascii')
     (out/'board_pins.json').write_text(json.dumps(mapping,indent=2)+'\n',encoding='ascii')
     return mapping
 
+def recover_placed_build(build, current, previous_recipe):
+    """Resume the rejected PLC entry; preserve and authenticate every old byte."""
+    old_manifest_bytes=(build/'manifest.json').read_bytes()
+    old=json.loads(old_manifest_bytes)
+    old_log=(build/'build.log').read_bytes()
+    old_route=(build/'route.tcl').read_bytes()
+    old_recipe=previous_recipe.read_bytes()
+    digest=lambda data:hashlib.sha256(data).hexdigest()
+    recipe_name='fpga/scripts/build.py'
+    if old.get('status')!='FAIL' or old.get('sources_unchanged') is not True or 'route_entry_recovery' in old:
+        raise ValueError('Resume requires the original failed, unchanged-input build')
+    previous_sources=old['source_sha256']
+    if (set(previous_sources)!=set(current['source_sha256']) or
+        any(value!=current['source_sha256'][name] for name,value in previous_sources.items() if name!=recipe_name) or
+        digest(old_recipe)!=previous_sources[recipe_name]):
+        raise ValueError('Resume hardware inputs or frozen previous recipe differ')
+    previous_impl=json.loads(json.dumps(old['implementation']))
+    if previous_impl['route_constraint_iteration']!={'enabled':False,'maximum':1,'target_slack_ns':0.05,'max_paths':8}:
+        raise ValueError('Resume is restricted to the rejected single-route PLC entry')
+    previous_impl['route_constraint_iteration']['enabled']=True
+    if previous_impl!=current['implementation'] or old['requested_stage']!=current['requested_stage'] or old['start_stage']!=current['start_stage']:
+        raise ValueError('Resume changes more than the route entry point')
+    flows=old.get('flow_evidence',[])
+    if len(flows)!=2 or [f.get('stages') for f in flows]!=[['compile','synthesize','dev_map'],['place']]:
+        raise ValueError('Resume requires exactly the completed compile/map and placement processes')
+    for flow in flows:
+        if flow.get('exit_code')!=0 or digest((ROOT/flow['script']).read_bytes())!=flow['script_sha256']:
+            raise ValueError('Completed flow script or exit status differs')
+    marker=b'MEMS_PANGO_PLACE_COMPLETE\n'
+    normalized=old_log.replace(b'\r\n',b'\n')
+    if normalized.count(marker)!=1:
+        raise ValueError('Missing unique placement completion')
+    # Preserve the actual byte prefix including its original newline encoding.
+    m=re.search(rb'^MEMS_PANGO_PLACE_COMPLETE\r?\n',old_log,re.M)
+    prefix,failed_tail=old_log[:m.end()],old_log[m.end():]
+    if (not re.search(rb"E: Flow-0013: The input DB '[^\r\n]+' should be of phase 'DEVMAP'\.",failed_tail) or
+        re.search(rb'Route thread size:|Current iteration time:|MEMS_PANGO_PNR_COMPLETE|Phase \d',failed_tail) or
+        b'-enable_route_constraint_iterate' in old_route):
+        raise ValueError('Failure was not the known pre-route database entry rejection')
+    top='mems_array_pg2l200h'
+    checks=[(build/'device_map'/f'{top}_map.adf',old['postmap_constraints']['mapped_db_sha256']),
+            (build/'device_map'/f'{top}_base.pcf',old['postmap_constraints']['base_pcf_sha256']),
+            (build/'device_map'/f'{top}.pcf',old['postmap_constraints']['route_pcf_sha256']),
+            (build/'place_route'/f'{top}_placed_input.adf',old['postplace_link']['placed_db_sha256']),
+            (build/'place_route'/f'{top}_plc.adf',old['postplace_link']['placed_db_sha256'])]
+    if any(digest(path.read_bytes())!=expected for path,expected in checks) or (build/'place_route'/f'{top}_pnr.adf').exists():
+        raise ValueError('Map/PCF/placement changed or a routed database already exists')
+    archive=build/'resume_before_route'
+    archive.mkdir(exist_ok=False)
+    for name,data in [('manifest.json',old_manifest_bytes),('build.log',old_log),('route.tcl',old_route),('build.py',old_recipe)]:
+        (archive/name).write_bytes(data)
+    result=old.copy()
+    for key in ('exit_code','sources_unchanged','completed_at','error','release_error'):
+        result.pop(key,None)
+    result.update(status='RUNNING',source_sha256=current['source_sha256'],implementation=current['implementation'])
+    result['route_entry_recovery']={
+        'archive_dir':archive.relative_to(ROOT).as_posix(),
+        'previous_build_log_sha256':digest(old_log),'previous_manifest_sha256':digest(old_manifest_bytes),
+        'previous_route_script_sha256':digest(old_route),'previous_build_recipe_sha256':digest(old_recipe),
+        'retained_log_bytes':len(prefix),'retained_log_sha256':digest(prefix),
+        'recovered_at':datetime.now().astimezone().isoformat()}
+    (build/'build.log').write_bytes(prefix)
+    return result
+
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--stage',choices=STAGES,default='report_timing')
-    p.add_argument('--build-name',default='MEMS_Array_uart_clk8_18v_spread5',help='Separate output folder under fpga/build; preserves earlier released project')
-    p.add_argument('--place-seed',type=int,default=2,help='Global placement seed; fixed FIR macro sites and timing requirements are unchanged')
+    p.add_argument('--build-name',default='MEMS_Array_i2s_fir8_auto_20261011',help='Separate output folder under fpga/build; preserves earlier released project')
+    p.add_argument('--place-seed',type=int,default=2,help='Global placement seed; timing requirements are unchanged')
+    p.add_argument('--frontend-floorplan',choices=['fixed','auto'],default='auto',help='Automatic macro placement for the current 8-lane design; fixed is for the historical 16-lane template')
+    p.add_argument('--route-iterations',type=int,choices=[1,2],default=1,help='One route by default; 2 enables the existing optional constraint-repair iteration')
+    p.add_argument('--resume-placed',action='store_true',help='Recover only the known pre-route PLC/DEVMAP entry error, preserving completed placement')
+    p.add_argument('--previous-build-recipe',type=Path,help='Frozen original build.py, required for --resume-placed')
     p.add_argument('--placement-decongestion',type=int,choices=range(10),default=5,help='PDS placement spreading; does not change timing constraints')
     p.add_argument('--placement-initial-method',choices=['Quad','Center'],default='Center')
-    p.add_argument('--pnr-timeout-minutes',type=int,default=120,help='Whole PNR action time limit, including automatic route iterations')
+    p.add_argument('--pnr-timeout-minutes',type=int,default=180,help='Whole PNR action time limit, including automatic route iterations')
     p.add_argument('--mems-l5-level-shifted',action='store_true',help='Build for external 1.8-to-3.3 V translators on L5 DATA; never for direct 1.8 V wiring')
     p.add_argument('--start-stage',choices=['compile','dev_map'],default='compile',help='Start a fresh build, or map an existing synthesis database for diagnosis; release builds must start at compile')
     p.add_argument('--pango',default=os.getenv('PANGO_INSTALL','D:/Application/ElectronicIDE/Pango/PDS_2022.2-SP6.4'))
@@ -110,7 +194,7 @@ def main():
     constraints=[ROOT/'fpga/constraints/board_pins.fdc',ROOT/'fpga/constraints/timing.fdc']
     floorplan=ROOT/'fpga/constraints/frontend_floorplan.pcf'
     floorplan_commands=[s.strip() for s in floorplan.read_text(encoding='ascii').splitlines() if s.strip() and not s.lstrip().startswith('#')]
-    if len(floorplan_commands)!=176 or any(not re.fullmatch(r'def_inst_site \{core/frontend/fir[12]/[^{}]+\} (?:APM|DRM)_\d+_\d+ (?:XAPM_CORE_[UD]|DRM0)',s) for s in floorplan_commands):
+    if args.frontend_floorplan == 'fixed' and (len(floorplan_commands)!=176 or any(not re.fullmatch(r'def_inst_site \{core/frontend/fir[12]/[^{}]+\} (?:APM|DRM)_\d+_\d+ (?:XAPM_CORE_[UD]|DRM0)',s) for s in floorplan_commands)):
         raise ValueError('Unexpected frontend floorplan commands')
     includes=[ROOT/'rtl',ROOT/'rtl/board']
     top='mems_array_pg2l200h'
@@ -139,7 +223,7 @@ def main():
              # PDS derives priority routing commands for paths below +50 ps.
              # This is a physical search target, not a relaxed timing exception.
              # It repairs the reset-distribution near miss seen after ARP gating.
-             'pnr':'pnr -mode performance -max_ctrl_chain_length 8 -enable_route_constraint_iterate -route_constraint_iterate_times 2 -route_constraint_slack 0.050 -route_constraint_max_timing_path 8 -fix_hold_violation_in_route TRUE -fix_hold_violation_threshold_for_clock_path_cross_srb 20 -fix_hold_violation_threshold_for_clk_tree 20 -max_hold_violated_paths_num 50000 -dump_router_congestion_plot TRUE -action_timeout '+str(args.pnr_timeout_minutes),
+             'pnr':'pnr -mode performance -max_ctrl_chain_length 8 -number_of_router_thread 5 -fix_hold_violation_in_route TRUE -fix_hold_violation_threshold_for_clock_path_cross_srb 20 -fix_hold_violation_threshold_for_clk_tree 20 -max_hold_violated_paths_num 50000 -dump_router_congestion_plot TRUE -action_timeout '+str(args.pnr_timeout_minutes),
              'report_timing':'report_timing -delay_type min_max -report_io_datasheet -report_max_skew -report_exception TRUE -max_path 8',
              'gen_bit_stream':'gen_bit_stream -create_bit_file TRUE -create_bin_file -persist_pin {Release For USER}'}
     actions['pnr']+=' -gplace_seed '+str(args.place_seed)
@@ -147,9 +231,11 @@ def main():
     if args.start_stage != 'compile':
         if args.start_stage == 'dev_map':
             actions['dev_map']='dev_map -force_to_run -input_db_file '+tcl_path(build/'synthesize'/f'{top}_syn.adf')
-    # PDS 2022.2 route-constraint iteration accepts PLC, not MAP, databases.
-    # Produce that placement in this build, then freeze a separate input copy.
-    place_action=re.sub(r' -enable_route_constraint_iterate -route_constraint_iterate_times 2 -route_constraint_slack 0\.050 -route_constraint_max_timing_path 8', '', actions['pnr'])+' -place_only'
+    # PDS 2022.2 accepts a PLC input through its constraint-route entry point.
+    # Limit that entry point to one iteration by default; disabling it would
+    # make input_db_file require DEVMAP and reject the completed placement.
+    place_action=actions['pnr']+' -place_only'
+    actions['pnr']+=' -enable_route_constraint_iterate -route_constraint_iterate_times '+str(args.route_iterations)+' -route_constraint_slack 0.050 -route_constraint_max_timing_path 8'
     if args.stage == 'gen_bit_stream' and args.start_stage != 'compile':
         raise ValueError('Release bitstreams require a complete build starting at compile')
     # PDS parses ordinary Tcl expressions before executing its queued flow.
@@ -163,7 +249,14 @@ def main():
     first_stages=main_stages[:main_stages.index('pnr')] if split_route else main_stages
     commands += [actions[stage] for stage in first_stages]
     script=build/'build.tcl'
-    script.write_text('\n'.join(commands)+'\n',encoding='utf-8')
+    script_text='\n'.join(commands)+'\n'
+    if args.resume_placed:
+        if not split_route or args.previous_build_recipe is None:
+            raise ValueError('Resume requires a routing stage and the frozen previous build recipe')
+        if script.read_text(encoding='utf-8') != script_text:
+            raise ValueError('Completed compile/map script differs; cannot resume placement')
+    else:
+        script.write_text(script_text,encoding='utf-8')
     def source_hashes():
         # Re-enumerate to detect newly added or removed RTL/includes as well.
         # Evidence-checker/helper versions are independently hashed before and
@@ -177,11 +270,15 @@ def main():
               'mems_electrical':{'vdd_volts':1.8,'clock_outputs':8,'clock_drive_ma':16,'clock_slew':'FAST',
                   'required_bank_l6_l7_vccio_volts':1.8,'l5_external_level_translation':args.mems_l5_level_shifted,
                   'hardware_voltage_verified':False},
-              'implementation':{'fanout_guide':256,'explicit_control_maxfan':256,'placement_decongestion':args.placement_decongestion,'placement_initial_method':args.placement_initial_method,'placement_seed':args.place_seed,'pnr_timeout_minutes':args.pnr_timeout_minutes,'congestion_dump':True,'floorplan':'frontend_floorplan.pcf','control_chain_max_length':8,'route_constraint_iteration':{'maximum':2,'target_slack_ns':0.050,'max_paths':8}},
+              'i2s_electrical':{'bank':'L5','vccio_volts':3.3,'standard':'LVCMOS33','drive_ma':8,'slew':'FAST',
+                  'sck_hz':12288000,'bck_hz':3072000,'lrck_hz':48000,'board_load_verified':False},
+              'implementation':{'fanout_guide':256,'explicit_control_maxfan':256,'placement_decongestion':args.placement_decongestion,'placement_initial_method':args.placement_initial_method,'placement_seed':args.place_seed,'pnr_timeout_minutes':args.pnr_timeout_minutes,'congestion_dump':True,'frontend_floorplan_mode':args.frontend_floorplan,'floorplan':'frontend_floorplan.pcf' if args.frontend_floorplan=='fixed' else None,'router_threads':5,'control_chain_max_length':8,'route_constraint_iteration':{'enabled':True,'maximum':args.route_iterations,'target_slack_ns':0.050,'max_paths':8}},
               'flow_evidence':[]}
+    if args.resume_placed:
+        manifest=recover_placed_build(build,manifest,args.previous_build_recipe)
     (build/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     log=build/'build.log'
-    if log.exists():
+    if log.exists() and not args.resume_placed:
         archive=build/'logs'; archive.mkdir(exist_ok=True)
         (archive/f'build_{datetime.now():%Y%m%d_%H%M%S}.log').write_bytes(log.read_bytes())
     print(f'[PANGO] {args.stage}; log: {log}',flush=True)
@@ -210,34 +307,43 @@ def main():
             script_sha256=hashlib.sha256(flow_script.read_bytes()).hexdigest(),
             completed_at=datetime.now().astimezone().isoformat(),exit_code=result.returncode))
         (build/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-    validate_plls(install,build,ROOT/'rtl/board/pango_board_clocks.v')
+    if not args.resume_placed:
+        validate_plls(install,build,ROOT/'rtl/board/pango_board_clocks.v')
     success=False
     failure=None
     try:
-        run_pds(script,'MEMS_Array',first_stages,'w')
+        if not args.resume_placed:
+            run_pds(script,'MEMS_Array',first_stages,'w')
         if split_route:
             mapped_db=build/'device_map'/f'{top}_map.adf'
             physical_pcf=build/'device_map'/f'{top}.pcf'
             base_pcf=build/'device_map'/f'{top}_base.pcf'
             if not mapped_db.is_file() or not physical_pcf.is_file():
                 raise RuntimeError('Missing fresh map DB or generated physical PCF')
-            base_pcf.write_bytes(physical_pcf.read_bytes())
-            physical_pcf.write_bytes(base_pcf.read_bytes()+b'\n'+floorplan.read_bytes())
+            if not args.resume_placed:
+                base_pcf.write_bytes(physical_pcf.read_bytes())
+            if args.frontend_floorplan == 'fixed' and not args.resume_placed:
+                physical_pcf.write_bytes(base_pcf.read_bytes()+b'\n'+floorplan.read_bytes())
+            # Auto mode leaves the original generated PCF bytes unchanged.
             manifest['postmap_constraints']={
                 'mapped_db_sha256':hashlib.sha256(mapped_db.read_bytes()).hexdigest(),
                 'base_pcf_sha256':hashlib.sha256(base_pcf.read_bytes()).hexdigest(),
                 'route_pcf_sha256':hashlib.sha256(physical_pcf.read_bytes()).hexdigest(),
-                'template_sha256':hashlib.sha256(floorplan.read_bytes()).hexdigest()}
+                'template_sha256':hashlib.sha256(floorplan.read_bytes()).hexdigest(),
+                'frontend_floorplan_mode':args.frontend_floorplan,
+                'template_applied':args.frontend_floorplan=='fixed'}
             (build/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
             place_script=build/'place.tcl'
-            place_script.write_text('\n'.join(setup_commands+['add_constraint '+tcl_path(physical_pcf),
-                place_action+' -force_to_run -input_db_file '+tcl_path(mapped_db)])+'\n',encoding='utf-8')
-            run_pds(place_script,'MEMS_Array_place',['place'])
+            if not args.resume_placed:
+                place_script.write_text('\n'.join(setup_commands+['add_constraint '+tcl_path(physical_pcf),
+                    place_action+' -force_to_run -input_db_file '+tcl_path(mapped_db)])+'\n',encoding='utf-8')
+                run_pds(place_script,'MEMS_Array_place',['place'])
             placed_source=build/'place_route'/f'{top}_plc.adf'
             placed_input=build/'place_route'/f'{top}_placed_input.adf'
             if not placed_source.is_file():
                 raise RuntimeError('Missing fresh placement database')
-            shutil.copy2(placed_source,placed_input)
+            if not args.resume_placed:
+                shutil.copy2(placed_source,placed_input)
             placed_hash=hashlib.sha256(placed_input.read_bytes()).hexdigest()
             manifest['postplace_link']={'placed_db_sha256':placed_hash}
             (build/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')

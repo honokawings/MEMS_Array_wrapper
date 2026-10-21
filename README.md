@@ -1,19 +1,28 @@
 # 128 通道麦克风阵列 FPGA 驱动
 
-面向盘古 MINI-200H（PG2L200H / FBB676 / -6），实现 64 根共享 PDM DATA 的同步采集、128 通道数字前处理、校准与千兆 UDP 发送。麦克风为 IM72D128V01；SRP-PHAT 声源定位由上位机实现。
+面向盘古 MINI-200H（PG2L200H / FBB676 / -6），实现 64 根共享 PDM DATA 的同步采集、128 通道数字前处理、奇偶补偿、校准、千兆 UDP 发送及 PCM5102 I2S 监听。麦克风为 IM72D128V01；SRP-PHAT 声源定位由上位机实现。
 
 ## 当前交付状态
 
-文档核对日期：2026-09-20。当前推荐构建为 **`MEMS_Array_uart_clk8_18v_spread3_long`**，八路同源 CLK、1.8 V 麦克风接口、完整 UART 反馈。
+文档核对日期：2026-10-11。当前已发布并下载版本为 **`MEMS_Array_i2s_fir8_auto_20261011`**，包含启动直流估计、并行FIR舍入/饱和及8-lane共用乘加。其[18/18功能回归](log/i2s_parity/full_regression_fir8_auto_20261011.json)、唯一一轮原生路由、严格快/慢角时序与[发布门禁](fpga/build/MEMS_Array_i2s_fir8_auto_20261011/release.json)通过；16:19:06完成[JTAG SRAM下载](log/i2s_parity/jtag_fir8_auto_20261011/download.json)，未写Flash。**本次A–E数字验收通过，联合结果为PASS_WITH_KNOWN_ISSUES**，见[FIR8报告](doc/reports/i2s_fir8_auto_20261011.md)。
+
+FIR8本次验证128/128监听通道、奇偶组独立零增益、PHY/MDIO→ARP→UDP及I2S BIST旁路，C+D共504,694,272个样本内容正确、连续无缺包；[联合验收](log/i2s_parity/fir8_auto_hardware_acceptance_20261011.json)绑定新位流和实际日志。退出BIST并恢复unity/I2S0后，[真实三秒采集](log/i2s_parity/fir8_auto_unity_spool_20261011/analysis.json)143,589帧、47,863包连续，但**DATA1（J26/AC22）通道2、3仍固定−8,388,608，ACRMS为0、rail占比100%**；仅这两路出现rail。此前捕获失败及[seed3历史结果](doc/reports/i2s_parity_dc_roundsat_seed3_20261011.md)保留。数字通过不等于供电、电气、声学或DAC模拟验收，full_goal_complete=false。
+
+FIR8每级从16条乘加流水改为8条，轮流处理16组，128通道、48kHz及帧号不变；共同处理延迟增加1600个音频时钟，约13.02µs。六配置RAM定向11,435,616项和完整18层回归通过。[实际资源](log/i2s_parity/fir8_auto_map_actual_20261011.json)为APM132→68（−48.5%）、FF53,163→47,953、LUT33,190→28,512，分布式RAM2,290与DRM70.5不变。原路由入口Flow-0013证据已[归档](fpga/build/MEMS_Array_i2s_fir8_auto_20261011/resume_before_route)；从同一PLC恢复后只执行1轮，64819条连接全部布通。PNR用时1850秒，比seed3的8582秒减少78.4%；详细布线1528.25秒，比8360.84秒减少81.7%。这是两次实际构建的比较，不能仅归因于APM减少。
+
+旧DC两轮setup−0.200/−0.369ns严格FAIL、未生成位流；roundsat seed2布线超时FAIL、最终时序未知，保留[历史记录](doc/reports/version_history.md)。用户允许setup≥−0.20ns、hold≥0的工程测试范围；当前FIR8和前一seed3均实际通过严格非负门禁，无需该负setup许可，历史FAIL不追改为PASS。
 
 | 项目 | 状态 / 入口 |
 |---|---|
-| 工程位流 | [下载 .sbit](fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/generate_bitstream/mems_array_pg2l200h.sbit)；[最终发布记录](fpga/build/MEMS_Array_uart_clk8_18v_spread3_long/release.json) PASS |
-| 软件与器件实现验证 | 12/12 功能回归、146/146 检查器测试通过；慢角/快角时序无违例 |
-| 本版实板状态 | **尚未下载；L6/L7 实际电压尚未确认；UART、网络和真实阵列待测** |
-| 交付范围 | 工程上板联调；PDS Pre-silicon 模型，不代表实板电气或声学验收 |
-| 发布详情 | [引脚、时序、校验值与验证边界](doc/reports/clk8_18v_update.md) |
-
+| 已下载版本 | `MEMS_Array_i2s_fir8_auto_20261011`；[发布](fpga/build/MEMS_Array_i2s_fir8_auto_20261011/release.json) / [JTAG](log/i2s_parity/jtag_fir8_auto_20261011/download.json)，SRAM、未写Flash |
+| 功能回归 | [FIR8不可变18/18记录](log/i2s_parity/full_regression_fir8_auto_20261011.json)，104项输入、22份向量；六配置RAM11,435,616项检查 |
+| 器件时序 | Slow最小setup/hold +0.016/+0.058ns；Fast +0.387/+0.020ns，All Constraints Met |
+| 实板数字自测 | [本次联合验收](log/i2s_parity/fir8_auto_hardware_acceptance_20261011.json)PASS_WITH_KNOWN_ISSUES；A–E全通过，C+D 504,694,272样本0错误0缺包，D128路I2S内容通过；原失败全部保留 |
+| 真实输入 | [FIR8真实采样](log/i2s_parity/fir8_auto_unity_spool_20261011/analysis.json)143,589帧/47,863包连续；仅DATA1/ch2、3固定负满量程，stickyCLIP及DC拒绝保留 |
+| FIR8实现 | 总APM68、FF47,953、LUT28,512；唯一1轮路由1850秒，128通道采样率不变，共同延迟增加约13.02µs |
+| 物理验收 | 板上VCCIO、PDM带载与RGMII TXC波形、DAC模拟输出和64对声学补偿待测 |
+| 交付范围 | 工程上板联调；PDS Pre-silicon模型和数字通过不代表实板电气、交流幅值或声学验收 |
+| 历史结果 | [版本历史](doc/reports/version_history.md)；首版UART常量0、旧时序FAIL及布线超时/取消均保留 |
 接入阵列前，断电按板卡丝印将 **J24 设为 VADJ=1.8 V，J20 选择 VADJ 为 L6/L7 供电**，再实测 VCCIO 与 MEMS VDD 均为 1.8 V。软件约束不会改变板上电压；扩展口 A3V3/A5V0 电源针仍为固定电压。
 
 ## 使用入口
@@ -23,8 +32,9 @@
 | 查找全部文档及验证证据 | [文档索引](doc/README.md) |
 | 接线、下载与首次采集 | [上板指南](doc/board_bringup.md) |
 | 通过 COM3 验证 PHY/MDIO → ARP → UDP | [UART 联调指南](doc/system_uart_debug.md) |
+| 选择 I2S 通道、驱动 PCM5102 或标定奇偶补偿 | [音频监听与补偿指南](doc/audio_monitor.md) |
 | 不接麦克风验证数字链路 | [内部 PDM 自测](doc/selftest.md) |
-| 编写上位机或保存数据 | [接口开发参考](doc/host_protocol_reference.md) · [采集工具指南](doc/host_capture.md) |
+| 编写上位机或保存数据 | [接口开发参考](doc/host_protocol_reference.md) · [采集工具指南](doc/host_capture.md) · [本次UDP暂存/离线解析](doc/reports/i2s_fir8_auto_20261011.md#本次工程采集方式) |
 | 了解算法、RTL 与校准接口 | [算法规格](doc/algorithm_spec.md) · [RTL 架构](doc/rtl_architecture.md) · [集成指南](doc/integration.md) |
 | 查阅旧版结果 | [版本历史](doc/reports/version_history.md) |
 
@@ -34,14 +44,17 @@
 |---|---|
 | 输入 | 64 根共享 PDM DATA，每线两只麦克风，共 128 通道 |
 | 麦克风时钟 | 3.072 MHz；8 个物理输出来自同一分频源，共用相位和复位 |
-| 音频输出 | 每通道 48 kHz、24 位有符号 PCM；定位有效通带 20 Hz～16 kHz，DC 保留 |
-| 前处理 | 双相采集 → CIC5 /8 → FIR63 /4 → FIR127 /2 → 增益/偏置校准 |
+| 音频输出 | 每通道 48 kHz、24 位有符号 PCM；定位有效通带 20 Hz～16 kHz；新源码默认估计并移除稳定直流 |
+| 前处理 | 双相采集 → CIC5 /8 → FIR63 /4 → FIR127 /2 → 启动直流补偿 → 奇偶组增益 → 逐通道增益/偏置校准 |
+| I2S 监听 | 通道 0～127 可选，同一单声道复制至 L/R；48 kHz，24 位/32 位槽；SCK=12.288 MHz、BCK=3.072 MHz |
 | 传输 | 跨时钟 FIFO → 每包 3 帧 → UDP/IPv4/ARP → RGMII → RTL8211F-CG |
 | 数据量 | UDP 负载 1208 字节/包，16,000 包/秒；含线路开销约 163.072 Mbit/s |
 | 默认网络 | FPGA `192.168.10.2`，电脑 `192.168.10.1/24`，UDP 源/目的端口 `5000/5000` |
-| 调试接口 | COM3，115200 8N1，无流控；SYS3 状态与 `s/h/r/t/c` 命令 |
-| 启动条件 | 校准、1000M 全双工链路及 ARP 对端地址全部就绪后自动采集 |
-| 默认校准 | 增益 1、偏置 0；实测校准后重新生成板级 ROM 并构建 |
+| 调试接口 | COM3，115200 8N1；原 SYS3 与 `s/h/r/t/c` 保留，新增独立 `@I2S` / `@GAIN` 命令及 I2S1 / GAIN1 回帧 |
+| 启动条件 | 真实模式无需网络，滤波稳定 96 帧后估计 4096 帧直流，完成审核后从第 4192 帧输出；UDP 和内部 PDM BIST 等待 1000M 全双工及 ARP |
+| 默认校准 | 每通道直流估计并冻结；奇偶组和逐通道交流增益均为 1，ROM 后级偏置为 0；UART 可配置奇偶组增益，个体声学灵敏度尚未实测配平 |
+
+[MEMS 手册](doc/IM72D128V01XTMA1.pdf)给出 LR=GND/VDD 两组不同的典型直流水平，并说明它们随时间稳定。手册没有明确可直接写入补偿器的有符号直流码，因此新源码在启动时逐通道估计均值并冻结，避免将直流水平差错误当作交流增益比例。估计期间保持音频静音；满量程、过大或不稳定的均值会被拒绝，异常通道保持原有故障表现。SYS3 新增 bit12/13/14 分别表示启用直流补偿、估计审核结束、至少一个通道被拒绝；审核结束不等于全部通道正常。内部 BIST 旁路直流补偿并保持原黄金向量；便携内核默认禁用估计。详细参数和算术见[算法规格](doc/algorithm_spec.md)。
 
 数据包中的通道号、帧号和 epoch 用于重建同步时间窗，不能用网络到达时刻代替采样时刻。仿真精度与内部自测结果不等于麦克风实际 SNR；阵元坐标、外部带载波形及声学校准仍须实测。
 
@@ -50,6 +63,7 @@
 | 连接器 | 分配 | Bank | I/O 标准 |
 |---|---|---|---|
 | J10 | CLK0～7 | L6 | LVCMOS18，16 mA，FAST |
+| J10 | SCK、BCK、DIN、LRCK | L5 | LVCMOS33，8 mA，FAST，连接 PCM5102 |
 | J25 | DATA32～63 | L6 | LVCMOS18 |
 | J26 | DATA0～31 | L7 | LVCMOS18 |
 
@@ -62,10 +76,10 @@
 | 原图左列 | 原图右列 |
 |---|---|
 | GND | A5V0 |
-| R21- | R20- |
-| N19- | P19- |
-| M25- | M24- |
-| T25- | T24- |
+| R21-SCK  | R20- |
+| N19-BCK  | P19- |
+| M25-DIN  | M24- |
+| T25-LRCK | T24- |
 | R22- | T22- |
 | K26- | K25- |
 | L25- | L24- |
@@ -134,7 +148,7 @@
 
 ## 千兆网口接口映射
 
-使用 PHY0（RTL8211F-CG）。PHY 芯片支持 10/100/1000M，当前系统只在 1000M 全双工下采集。
+使用 PHY0（RTL8211F-CG）。PHY 芯片支持 10/100/1000M，当前系统只在 1000M 全双工下发送 UDP；真实模式采集及 I2S 可独立运行。
 
 | 信号名称 | 描述 | FPGA 管脚 | RTL8211F Pin |
 |---|---|---|---|
@@ -163,7 +177,7 @@
 | UART RX / TX | B24 / C24 | FPGA 方向，3.3 V，板载串口桥连接 COM3 |
 | KEY0 / KEY1 | C22 / C23 | 兼容保留全局复位与模式切换；联调以 UART 为主 |
 
-完整顶层共 99 个约束端口。八路 CLK 同源不表示焊盘零偏斜；PDM 外部往返传播预算为 20 ns，真实麦克风引脚处的时钟边沿与占空比待测。详细电气条件见[上板指南](doc/board_bringup.md)。
+完整顶层共 103 个约束端口，包含新增四根 I2S 输出。I2S 使用固定 3.3 V 的 L5，MEMS 使用 1.8 V 的 L6/L7；J10 同时含两种电压的信号，不能把整个连接器视为同一 Bank。八路 CLK 同源不表示焊盘零偏斜；PDM 外部往返传播预算为 20 ns，真实麦克风引脚处的时钟边沿与占空比待测。详细电气条件见[上板指南](doc/board_bringup.md)。
 
 ## 工程与验证入口
 
@@ -174,6 +188,6 @@
 | 浮点/定点模型与 Cmodel | [lib/model](lib/model) / [mems_rm.cpp](lib/cmodel/mems_rm.cpp) |
 | 引脚与时序约束 | [fpga/constraints](fpga/constraints) |
 | 完整构建与发布检查 | [构建操作](doc/board_bringup.md#构建与发布复现) / [发布检查说明](fpga/scripts/RELEASE_CHECK.md) |
-| 最新功能回归 | [系统验证报告](doc/reports/system_verification.md) / [原始清单](log/full_regression.json) |
+| 最新功能回归 | [自动系统验证报告](doc/reports/system_verification.md) / [FIR8不可变完整回归](log/i2s_parity/full_regression_fir8_auto_20261011.json)，18/18 PASS，104项输入、22份向量 |
 
 在工程根目录执行 `python sim/verify_all.py` 进行完整回归；`sim/sim.bat` 仅运行前处理层。依赖和分层运行方式见[集成指南](doc/integration.md)。最初仅做前处理的需求保存在[原始需求记录](doc/history/original_requirements.md)。

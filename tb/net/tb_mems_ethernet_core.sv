@@ -18,7 +18,17 @@ module tb_mems_ethernet_core;
     wire [7:0] gmii_txd;
     wire gmii_tx_en,gmii_tx_er,overflow,processing_error,clipped,framing_error,tx_error,tx_packet_done;
     wire [31:0] dropped_frames,stream_epoch;
-    mems_ethernet_core #(.STARTUP_CYCLES(STARTUP),.ARP_RETRY_CYCLES(125000)) dut(.selftest_mode(1'b0),.selftest_pass(),.selftest_fail(),.selftest_tx_pass(),.selftest_tx_fail(),.debug_audio(),.debug_eth(),.debug_rx(),.*);
+    mems_ethernet_core #(.STARTUP_CYCLES(STARTUP),.ARP_RETRY_CYCLES(125000)) dut(
+        .audio_clk(audio_clk),.eth_clk(eth_clk),.rx_clk(rx_clk),.rst_n(rst_n),.run(run),.link_up(link_up),.selftest_mode(1'b0),
+        .pdm_data(pdm_data),.mic_clk(mic_clk),.started(started),.acquisition_active(acquisition_active),
+        .cfg_valid(cfg_valid),.cfg_channel(cfg_channel),.cfg_gain(cfg_gain),.cfg_offset(cfg_offset),.cfg_ready(cfg_ready),
+        .gmii_rxd(gmii_rxd),.gmii_rx_dv(gmii_rx_dv),.gmii_rx_er(gmii_rx_er),
+        .gmii_txd(gmii_txd),.gmii_tx_en(gmii_tx_en),.gmii_tx_er(gmii_tx_er),
+        .overflow(overflow),.processing_error(processing_error),.clipped(clipped),.framing_error(framing_error),.tx_error(tx_error),
+        .dropped_frames(dropped_frames),.stream_epoch(stream_epoch),.tx_packet_done(tx_packet_done),
+        .selftest_pass(),.selftest_fail(),.selftest_tx_pass(),.selftest_tx_fail(),.debug_audio(),.debug_eth(),.debug_rx(),
+        .parity_cfg_valid(1'b0),.parity_even_gain(24'd4194304),.parity_odd_gain(24'd4194304),.parity_cfg_ready(),
+        .parity_active_even_gain(),.parity_active_odd_gain(),.monitor_pcm_valid(),.monitor_pcm_channel(),.monitor_pcm_data());
     // Check conservation of every accepted sample, including its metadata,
     // across the added elastic stage under the real congestion/reset tests.
     reg [99:0] audio_queue[0:3],stalled_word;

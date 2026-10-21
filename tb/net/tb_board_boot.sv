@@ -13,8 +13,9 @@ module tb_board_boot;
     wire txc,txctl,mdc,phy_reset;
     tri1 mdio;
     mems_array_pg2l200h #(.UART_ENABLE(0)) dut(.sys_clk_27(audio_clk),.sys_clk_125_p(eth_clk),
-        .sys_clk_125_n(~eth_clk),.reset_n(reset_n),.selftest_key_n(1'b1),.led(),.pdm_data(64'd0),
-        .mic_clk(mic_clk),.PHY0_RXC(rx_clk),.PHY0_RXCTRL(1'b0),.PHY0_RXD(4'd0),
+        .sys_clk_125_n(~eth_clk),.reset_n(reset_n),.selftest_key_n(1'b1),.uart_rx(1'b1),.uart_tx(),.led(),.pdm_data(64'd0),
+        .mic_clk(mic_clk),.i2s_sck(),.i2s_bck(),.i2s_lrck(),.i2s_din(),
+        .PHY0_RXC(rx_clk),.PHY0_RXCTRL(1'b0),.PHY0_RXD(4'd0),
         .PHY0_TXC(txc),.PHY0_TXCTRL(txctl),.PHY0_TXD(txd),.PHY0_MDC(mdc),
         .PHY0_MDIO(mdio),.RSTN_OUT(phy_reset));
     integer checks=0,boot_writes=0,total_writes=0,starts=0;

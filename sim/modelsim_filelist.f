@@ -2,6 +2,7 @@
 ../rtl/pdm_capture.sv
 ../rtl/cic_decimator.sv
 ../rtl/fir_decimator.sv
+../rtl/pcm_parity_compensation.sv
 ../rtl/pcm_calibration.sv
 ../rtl/pcm_frame_fifo.sv
 ../rtl/mems_array_top.sv

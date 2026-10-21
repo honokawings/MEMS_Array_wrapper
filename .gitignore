@@ -1,3 +1,4 @@
+/sim/work_*/
 /lib/.deps
 /sim/work
 /sim/*/work
@@ -7,8 +8,13 @@
 /lib/model/__pycache__
 /rtl/work
 /sim/work_core
-/sim/net/work*
+/sim/__pycache__/
+/sim/audio/work*/
+/fpga/scripts/__pycache__/
+/fpga/scripts/tests/__pycache__/
 /lib/host/__pycache__
 /lib/host/tests/__pycache__
 /fpga/build
 /fpga/*.lock
+/sim/net
+/sim/fir

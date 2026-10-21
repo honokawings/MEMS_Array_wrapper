@@ -5,6 +5,7 @@ module board_uart_report #(
     parameter integer UART_DIV=234,REPORT_CYCLES=6750000,MS_CYCLES=27000,SNAPSHOT_WAIT=64
 )(
     input wire clk,rst_n,request,input wire [1023:0] status_words,
+    input wire [7:0] aux_data,input wire aux_valid,aux_last,output wire aux_ready,
     output reg snapshot_launch,output wire tx
 );
     localparam integer LINE_LEN=312;
@@ -13,8 +14,13 @@ module board_uart_report #(
     reg [8:0] index;
     reg [15:0] wait_count;
     reg active,pending,collecting;
-    wire tx_ready;
     reg [7:0] character;
+    reg [1:0] owner;
+    wire choose_aux=owner==2 || (owner==0 && aux_valid);
+    wire choose_sys=owner==1 || (owner==0 && !aux_valid && active);
+    wire send_valid=(choose_aux && aux_valid)||(choose_sys && active);
+    wire [7:0] send_data=choose_aux?aux_data:character;
+    wire tx_ready;
     integer word_index,nibble_index;
     reg [3:0] nibble;
     always @* begin
@@ -32,11 +38,12 @@ module board_uart_report #(
         endcase
     end
     diag_uart_tx #(.CLKS_PER_BIT(UART_DIV)) transmitter(.clk(clk),.rst_n(rst_n),
-        .data(character),.valid(active),.ready(tx_ready),.tx(tx));
+        .data(send_data),.valid(send_valid),.ready(tx_ready),.tx(tx));
+    assign aux_ready=choose_aux && tx_ready;
     always @(posedge clk) begin
         if(!rst_n)begin
             ms_count<=0;milliseconds<=0;period_count<=0;sequence_count<=0;snapshot<=0;
-            index<=0;wait_count<=0;active<=0;pending<=1;collecting<=0;snapshot_launch<=0;
+            index<=0;wait_count<=0;active<=0;pending<=1;collecting<=0;snapshot_launch<=0;owner<=0;
         end else begin
             snapshot_launch<=0;
             if(ms_count==MS_CYCLES-1)begin ms_count<=0;milliseconds<=milliseconds+1'b1;end
@@ -52,7 +59,11 @@ module board_uart_report #(
                     sequence_count<=sequence_count+1'b1;collecting<=0;active<=1;index<=0;
                 end
             end
-            if(active && tx_ready)begin
+            if(send_valid && tx_ready)begin
+                if(choose_aux)owner<=aux_last?0:2;
+                else owner<=index==LINE_LEN-1?0:1;
+            end
+            if(active && choose_sys && tx_ready)begin
                 if(index==LINE_LEN-1)begin active<=0;index<=0;end
                 else index<=index+1'b1;
             end

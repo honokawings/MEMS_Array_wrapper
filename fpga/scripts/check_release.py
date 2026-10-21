@@ -21,7 +21,28 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[2]
 TOP = 'mems_array_pg2l200h'
 STAGES = ('compile', 'synthesize', 'dev_map', 'pnr', 'report_timing', 'gen_bit_stream')
-STEPS = ('frontend', 'fir_arithmetic', 'phy', 'ethernet', 'transport', 'boot', 'core', 'selftest', 'host', 'host_rtl', 'board', 'system_uart')
+STEPS = ('frontend', 'fir_arithmetic', 'phy', 'ethernet', 'transport', 'boot', 'core', 'selftest', 'host', 'host_rtl', 'board', 'system_uart', 'parity', 'i2s', 'audio_uart', 'board_audio', 'vendor_uart', 'fir_ram')
+FIR_RAM_RESULT = 'log/fir_ram/result.json'
+FIR_RAM_SCOPE = 'fir_history_ram_pipeline_functional'
+FIR_RAM_SOURCES = ('rtl/fir_decimator.sv', 'rtl/fir1_coeff.svh', 'rtl/fir2_coeff.svh',
+                   'tb/tb_fir_ram_pipeline.sv', 'sim/fir/run_ram_pipeline.py',
+                   'lib/coeff/fir1_q30.hex', 'lib/coeff/fir2_q30.hex')
+FIR_RAM_FIELDS = ('case', 'channels', 'lanes', 'groups', 'taps', 'depth', 'decimation', 'input_interval',
+                  'checks', 'writes', 'reads', 'output_samples', 'wraps', 'concurrent_rw', 'resets',
+                  'commit_capture', 'writing_faults', 'busy_faults', 'input_changes')
+FIR_RAM_PARAMETERS = ((128,16,8,63,128,4,320), (128,16,8,127,256,2,1280),
+                      (1,1,1,63,128,4,32), (1,1,1,127,256,2,72),
+                      (128,8,16,63,128,4,320), (128,8,16,127,256,2,1280))
+FIR_RAM_COVERAGE = ('FIR1/FIR2, 16-lane/eight-group and 8-lane/sixteen-group production rates, and single group',
+                    'actual RAM write data/address and post-edge memory content',
+                    'independent accepted-input ordinal read addresses and read data',
+                    'two complete ring wraps in each configuration',
+                    'concurrent read/write with no same-address collision',
+                    'input bus changes after capture and during writing',
+                    'last RAM commit coincides with capture of next vector',
+                    'reset at first/last pending write, after commit and in first read',
+                    'writing and busy scheduling faults, clean restart',
+                    'independent full convolution, signed-magnitude rounding and exact output latency')
 CLOCKS = {'sys27': 1000/27, 'ref125': 8, 'eth250': 4, 'eth125': 8, 'rx125': 8, 'rx_data_launch': 8, 'async_pad_ref': 8, 'audio96': 1000/96,
           'audio122': 1000/122.88, 'tx_pad_ref': 8, 'pdm3072': 1000/3.072, 'mdc992k': 1008}
 CLOCK_PARENTS = {'audio96': 'sys27', 'audio122': 'audio96', 'eth250': 'ref125',
@@ -35,7 +56,8 @@ PORTS = ({f'pdm_data[{i}]' for i in range(64)} | {f'mic_clk[{i}]' for i in range
          {f'PHY0_{d}[{i}]' for d in ('RXD', 'TXD') for i in range(4)} |
          {'PHY0_RXC', 'PHY0_RXCTRL', 'PHY0_TXC', 'PHY0_TXCTRL', 'PHY0_MDIO',
           'PHY0_MDC', 'RSTN_OUT', 'sys_clk_27', 'sys_clk_125_p', 'sys_clk_125_n', 'reset_n', 'selftest_key_n', 'uart_rx', 'uart_tx'} |
-         {f'led[{i}]' for i in range(5)})
+         {f'led[{i}]' for i in range(5)} | {'i2s_sck','i2s_bck','i2s_din','i2s_lrck'})
+I2S_L5_PINS=set('M19 R14 R15 P14 N14 P15 P16 N16 N17 R16 R17 P18 N18 K25 K26 M20 L20 L24 L25 M24 M25 L22 L23 M21 M22 N21 N22 P20 P21 N23 N24 P19 N19 P23 P24 R20 R21 R25 P25 N26 M26 T24 T25 R26 P26 T22 R22 T23 R23 R18'.split())
 
 
 class ReleaseError(ValueError):
@@ -83,6 +105,77 @@ def timestamp(value):
     return result.timestamp()
 
 
+def check_fir_ram(root, regression, evidence):
+    """Bind actual RAM/convolution results and reparse original simulation rows."""
+    path = root/FIR_RAM_RESULT
+    need(path.is_file(), 'Missing mandatory FIR RAM regression result')
+    result_hash = sha(path)
+    need(regression['steps']['fir_ram'].get('evidence') == {'path': FIR_RAM_RESULT, 'sha256': result_hash},
+         'Full regression FIR RAM result path/hash mismatch')
+    result = read_json(path)
+    need(result.get('status') == 'PASS' and result.get('scope') == FIR_RAM_SCOPE,
+         'FIR RAM result lacks actual RAM functional PASS scope')
+    need(all(result.get(key) is False for key in ('sdf_annotated', 'placement_routing_tested', 'real_serial_opened')),
+         'FIR RAM result claims unsupported physical or serial verification')
+
+    def bind(label, file):
+        need(file.is_file() and file.stat().st_size > 0, f'Missing or empty FIR RAM input: {file}')
+        row = {'path': str(file.resolve()), 'bytes': file.stat().st_size, 'sha256': sha(file)}
+        evidence['fir_ram_'+label] = row
+        return row['sha256']
+
+    evidence['fir_ram_regression'] = {'path': str(path.resolve()), 'bytes': path.stat().st_size, 'sha256': result_hash}
+    sources = {rel: bind('source:'+rel, root/rel) for rel in FIR_RAM_SOURCES}
+    need(result.get('sources_sha256') == sources, 'FIR RAM source/coefficient input path/hash mismatch')
+    coefficients = {rel: sources[rel] for rel in FIR_RAM_SOURCES if rel.endswith('.hex')}
+    need(result.get('reference_coefficients_sha256') == coefficients, 'FIR RAM independent reference coefficient hash mismatch')
+    logs = {rel: bind('raw_log:'+rel, root/rel) for rel in ('log/fir_ram/vlog.log', 'log/fir_ram/vsim.log')}
+    need(result.get('raw_logs_sha256') == logs, 'FIR RAM original compile/simulation log path/hash mismatch')
+    artifacts = {'log/fir_ram/modelsim.ini': bind('artifact:modelsim.ini', root/'log/fir_ram/modelsim.ini')}
+    need(result.get('artifacts_sha256') == artifacts, 'FIR RAM simulation library configuration path/hash mismatch')
+    tools = result.get('tools_sha256')
+    need(isinstance(tools, dict) and len(tools) == 3 and
+         {Path(p).stem.lower() for p in tools} == {'vlib', 'vlog', 'vsim'}, 'Incomplete FIR RAM ModelSim tool evidence')
+    for name, expected in tools.items():
+        tool = Path(name)
+        need(tool.is_absolute() and bind('tool:'+name, tool) == expected, 'FIR RAM ModelSim tool path/hash mismatch')
+    need(timestamp(result['completed_at']) >= timestamp(result['started_at']), 'Invalid FIR RAM verification interval')
+
+    texts = {name: (root/rel).read_text(encoding='utf-8', errors='replace') for name, rel in
+             (('compile', 'log/fir_ram/vlog.log'), ('simulation', 'log/fir_ram/vsim.log'))}
+    for name, text in texts.items():
+        need(not any(token in text for token in ('[TB_ERROR]', '** Error', '** Fatal', '** Warning')) and
+             re.search(r'Errors: 0, Warnings: 0', text), f'FIR RAM {name} log contains errors/warnings or no zero-error summary')
+    simulation = texts['simulation']
+    need('[TB_INFO] Simulation Finished!' in simulation and
+         '[TB_INFO] FIR_RAM all six configurations passed' in simulation, 'FIR RAM original simulation lacks complete RAM coverage finish')
+    pattern = r'FIR_RAM '+r' '.join(re.escape(field)+r'=(\d+)' for field in FIR_RAM_FIELDS)
+    case_lines = re.findall(r'\[TB_DATA\] (FIR_RAM case=[^\r\n]*)', simulation)
+    cases = []
+    for line in case_lines:
+        match = re.fullmatch(pattern, line)
+        need(match is not None, 'Unknown FIR RAM original case row')
+        cases.append(dict(zip(FIR_RAM_FIELDS, map(int, match.groups()))))
+    cases.sort(key=lambda row: row['case'])
+    need(len(cases) == 6 and [row['case'] for row in cases] == list(range(6)), 'FIR RAM original log lacks six unique actual RAM cases')
+    need(result.get('cases') == cases and all(type(value) is int for row in result['cases'] for value in row.values()),
+         'FIR RAM result case counters differ from original simulation')
+    for row, parameters in zip(cases, FIR_RAM_PARAMETERS):
+        need(tuple(row[key] for key in FIR_RAM_FIELDS[1:8]) == parameters, 'FIR RAM actual configuration mismatch')
+        need(row['writes'] > 0 and row['reads'] > 0 and row['output_samples'] > 0 and row['wraps'] >= 2 and
+             row['concurrent_rw'] >= 1 and row['resets'] == 4 and row['commit_capture'] >= 1 and
+             row['writing_faults'] == 1 and row['busy_faults'] == 1 and row['input_changes'] >= 256 and
+             row['checks'] >= 2*row['writes']+row['reads']+row['output_samples'], 'FIR RAM actual RAM/convolution coverage incomplete')
+    need(type(result.get('checks')) is int and result['checks'] == sum(row['checks'] for row in cases),
+         'FIR RAM total checks differ from actual cases')
+    need(isinstance(result.get('coverage'), list) and all(isinstance(item, str) for item in result['coverage']) and
+         len(result['coverage']) == len(FIR_RAM_COVERAGE) and
+         set(result['coverage']) == set(FIR_RAM_COVERAGE), 'FIR RAM independent RAM/reference coverage contract incomplete')
+    return {'status': 'PASS', 'scope': FIR_RAM_SCOPE, 'result_sha256': result_hash, 'cases': cases,
+            'checks': result['checks'], 'sources_sha256': sources, 'reference_coefficients_sha256': coefficients,
+            'raw_logs_sha256': logs, 'tools_sha256': tools, 'placement_routing_tested': False, 'sdf_annotated': False}
+
+
 def scanned_sources(root):
     files = []
     for folder in ('rtl', 'tb', 'lib/model', 'lib/cmodel', 'lib/host', 'sim'):
@@ -112,9 +205,13 @@ def pins_from_fdc(text):
     for port, attr, value in re.findall(r'define_attribute\s+\{p:([^}]+)\}\s+\{PAP_IO_(DIRECTION|LOC|VCCIO|STANDARD)\}\s+\{([^}]+)\}', text):
         need(attr not in pins.setdefault(port, {}), f'Duplicate pin attribute: {port} {attr}')
         pins[port][attr] = value
-    need(set(pins) == PORTS, 'Board FDC must define exactly the 99 expected ports')
+    need(set(pins) == PORTS, 'Board FDC must define exactly the 103 expected ports')
     need(all(set(x) == {'DIRECTION', 'LOC', 'VCCIO', 'STANDARD'} for x in pins.values()), 'Incomplete pin attributes')
     need(len({x['LOC'] for x in pins.values()}) == len(pins), 'Duplicate package pin')
+    for name in ('i2s_sck','i2s_bck','i2s_din','i2s_lrck'):
+        attrs=pins[name]
+        need(attrs['LOC'] in I2S_L5_PINS and attrs['DIRECTION']=='OUTPUT' and
+             attrs['VCCIO']=='3.3' and attrs['STANDARD']=='LVCMOS33','I2S output must use reviewed L5/3.3 V electrical settings: '+name)
     return pins
 
 
@@ -128,6 +225,8 @@ def check_map(text, pin_fdc, timing_fdc):
     for port, attr, value in re.findall(r'define_attribute\s+\{p:([^}]+)\}\s+\{PAP_IO_(DRIVE|SLEW)\}\s+\{([^}]+)\}', pin_fdc):
         need(attr not in output_attributes.setdefault(port, {}), 'Duplicate output electrical attribute')
         output_attributes[port][attr] = value
+    for name in ('i2s_sck','i2s_bck','i2s_din','i2s_lrck'):
+        need(output_attributes.get(name)=={'DRIVE':'8','SLEW':'FAST'},'I2S output requires 8 mA FAST drive: '+name)
     actual = {}
     for line in text.splitlines():
         fields = [x.strip() for x in line.split('|')]
@@ -598,9 +697,64 @@ def check_physical(args, root, build, artifact, scripts, timing, fdc_text):
         jitter_bound = duty.get('required_edgepair_jitter_max_ns')
         need(isinstance(jitter_bound, (int, float)) and math.isfinite(jitter_bound) and jitter_bound > 0,
              'TXC lacks a positive board edge-pair jitter acceptance bound')
-        results = {'pdm': pdm, 'tx': tx}
+        i2s_script=root/'fpga/scripts/check_i2s_budget.py'
+        i2s_paths={**paths,'constraints':fdc,'rtl':root/'rtl/audio/pcm_i2s_tx.sv'}
+        i2s_args=[item for key,value in i2s_paths.items() for item in ('--'+key.replace('_','-'),value)]
+        i2s=run_helper(i2s_script,i2s_args,output/'i2s.json')
+        need(i2s.get('schema')=='i2s-routed-budget-v1','Unknown I2S helper schema')
+        need(i2s.get('checker_sha256')==scripts[str(i2s_script)]['sha256'] and
+             i2s.get('dependency_sha256')==scripts[str(tx_script)]['sha256'],'I2S helper/dependency hash mismatch')
+        need(i2s.get('scope')=='engineering_board_bringup' and i2s.get('unconditional_board_qualification') is False,
+             'I2S helper must preserve engineering-only scope')
+        need(set(i2s.get('evidence',{}))==set(i2s_paths),'I2S helper evidence set mismatch')
+        for key,path in i2s_paths.items():
+            item=i2s['evidence'][key]
+            need(Path(item['path']).resolve()==path.resolve() and item['sha256']==sha(path),'I2S helper used different raw evidence')
+        need(set(i2s.get('corners',{}))=={'slow','fast'},'I2S helper lacks both corners')
+        contract=i2s.get('contract',{})
+        need(all(contract.get(k)==v for k,v in {'audio_clock_hz':122880000,'sck_period_cycles':10,
+             'bck_period_cycles':40,'lrck_period_cycles':2560,'data_launch_to_bck_rise_cycles':20,
+             'pcm5102_minimum_setup_hold_ns':8.0,'enforced_setup_hold_ns':20.0,
+             'external_relative_delay_and_edge_budget_ns':20.0,'uncertainty_ns':0.300}.items()),'I2S reviewed external budget changed')
+        for corner in i2s['corners'].values():
+            need(set(corner.get('outputs',{}))=={'i2s_sck','i2s_bck','i2s_din','i2s_lrck'},'I2S helper lacks all four physical pad paths')
+            for port,item in corner['outputs'].items():
+                bound=4.0 if port in ('i2s_sck','i2s_bck') else 20.0
+                for key in ('ff_to_pad_rise_ns','ff_to_pad_fall_ns'):
+                    need(isinstance(item.get(key),(int,float)) and math.isfinite(item[key]) and 0<=item[key]<=bound+.001,'I2S real routed pad limit failed')
+            need(set(corner.get('receiver_margins',{}))=={'i2s_din','i2s_lrck'},'I2S helper lacks data/LRCK margins')
+            for item in corner['receiver_margins'].values():
+                need(all(math.isfinite(item[k]) and item[k]>0 for k in ('setup_remaining_ns','hold_remaining_ns')),'I2S setup/hold margin failed')
+            need(set(corner.get('clock_pulse_margins',{}))=={'i2s_sck','i2s_bck'},'I2S helper lacks SCK/BCK pulse budgets')
+            need(all(math.isfinite(item['remaining_ns']) and item['remaining_ns']>0 for item in corner['clock_pulse_margins'].values()),'I2S pulse-width margin failed')
+        uart_script=root/'fpga/scripts/check_uart_vendor.py'
+        uart_paths={key:paths[key] for key in ('slow_netlist','fast_netlist')}
+        uart_paths['probe_result']=root/'log/vendor_uart/result.json'
+        uart_args=['--root',root]+[item for key,value in uart_paths.items() for item in ('--'+key.replace('_','-'),value)]
+        uart=run_helper(uart_script,uart_args,output/'uart_vendor.json')
+        need(uart.get('schema')=='uart-vendor-and-routed-channel-v1' and uart.get('status')=='PASS',
+             'UART vendor/physical helper lacks a passing reviewed schema')
+        need(uart.get('checker_sha256')==scripts[str(uart_script)]['sha256'] and
+             uart.get('dependency_sha256')==scripts[str(tx_script)]['sha256'],'UART helper/dependency hash mismatch')
+        need(uart.get('scope')=='engineering_board_bringup','UART helper scope changed')
+        need(set(uart.get('evidence',{}))==set(uart_paths),'UART helper raw evidence set mismatch')
+        for key,path in uart_paths.items():
+            item=uart['evidence'][key]
+            need(Path(item['path']).resolve()==path.resolve() and item['sha256']==sha(path),'UART helper used different raw evidence')
+        probe=uart.get('probe',{})
+        need(probe.get('status')=='PASS' and probe.get('scope')=='vendor_uart_technology_netlist_functional' and
+             probe.get('channels')==128 and probe.get('variable_ff_count')==7 and probe.get('response_lines')==143,
+             'UART gate probe lacks all channels and rejection/OFF/gain coverage')
+        need(set(uart.get('corners',{}))=={'slow','fast'} and uart['corners']['slow']==uart['corners']['fast'],
+             'UART routed FF audit lacks identical slow/fast connections')
+        for corner in uart['corners'].values():
+            bits=corner.get('bits',[])
+            need(corner.get('variable_ff_count')==7 and corner.get('clock_input')=='sys_clk_27' and
+                 len(bits)==7 and {item.get('bit') for item in bits}==set(range(7)) and
+                 len({item.get('instance') for item in bits})==7,'UART routed audit lacks seven independent sys27 channel FFs')
+        results = {'pdm': pdm, 'tx': tx,'i2s':i2s,'uart_vendor':uart}
         # Include exact outputs in the release JSON, with their raw JSON hashes.
-        output_hashes = {'pdm': sha(output/'pdm.json'), 'tx': sha(output/'tx.json')}
+        output_hashes = {'pdm': sha(output/'pdm.json'), 'tx': sha(output/'tx.json'),'i2s':sha(output/'i2s.json'),'uart_vendor':sha(output/'uart_vendor.json')}
     return {'results': results, 'helper_output_sha256': output_hashes,
             'database': database, 'pdm_contract': pdm_contract}
 
@@ -721,6 +875,65 @@ def check_stage_log(text, pre_bit, split_place=False, route_selection=None):
     return evidence
 
 
+def frontend_floorplan_mode(manifest):
+    implementation = manifest.get('implementation', {})
+    mode = implementation.get('frontend_floorplan_mode', 'fixed')
+    need(mode in ('fixed', 'auto'), 'Unknown frontend floorplan mode')
+    if mode == 'auto':
+        need(implementation.get('floorplan') is None, 'Auto placement must not select a frontend template')
+    return mode
+
+
+def check_pnr_recipe(manifest, script_command, native_command, is_place, text):
+    """Bind the explicit new recipe; historical fixed-flow evidence is unchanged."""
+    implementation = manifest.get('implementation', {})
+    if 'frontend_floorplan_mode' not in implementation:
+        return
+    recipe = implementation.get('route_constraint_iteration', {})
+    maximum = recipe.get('maximum')
+    need(type(maximum) is int and maximum in (1, 2) and recipe.get('enabled') is True,
+         'Invalid single/two-route implementation recipe')
+    need(implementation.get('router_threads') == 5, 'PG2L200H recipe requires five router threads')
+    expected = {'-number_of_router_thread': '5', '-mode': 'performance',
+                '-max_ctrl_chain_length': '8', '-fix_hold_violation_in_route': 'TRUE',
+                '-fix_hold_violation_threshold_for_clock_path_cross_srb': '20',
+                '-fix_hold_violation_threshold_for_clk_tree': '20',
+                '-max_hold_violated_paths_num': '50000', '-dump_router_congestion_plot': 'TRUE',
+                '-action_timeout': str(implementation.get('pnr_timeout_minutes')),
+                '-gplace_seed': str(implementation.get('placement_seed')),
+                '-plc_decongestion': str(implementation.get('placement_decongestion')),
+                '-plc_initial_method': implementation.get('placement_initial_method')}
+    need(type(implementation.get('pnr_timeout_minutes')) is int and implementation['pnr_timeout_minutes'] > 0 and
+         type(implementation.get('placement_seed')) is int and implementation['placement_seed'] > 0 and
+         type(implementation.get('placement_decongestion')) is int and 0 <= implementation['placement_decongestion'] <= 9 and
+         implementation.get('placement_initial_method') in ('Center', 'Quad'), 'Invalid bound PNR parameters')
+    # PDS accepts a PLC input only through its constraint-route entry, even
+    # when that entry is limited to one routing iteration.
+    iterate = not is_place
+    for command in (script_command, native_command):
+        for option, value in expected.items():
+            need(re.findall(r'(?<!\S)'+re.escape(option)+r'\s+(\S+)', command) == [value],
+                 'PNR recipe option differs from manifest: '+option)
+        need(not re.search(r'(?<!\S)-(?:parallel|route_parallel|gplace_times|groute_times)(?:\s|$)', command),
+             'PNR recipe must not introduce multi-seed actions')
+        flags = re.findall(r'(?<!\S)-enable_route_constraint_iterate(?:\s|$)', command)
+        need(len(flags) == int(iterate), 'Unexpected optional route-constraint iteration')
+        for option, value in {'-route_constraint_iterate_times':str(maximum), '-route_constraint_slack':'0.050',
+                              '-route_constraint_max_timing_path':'8'}.items():
+            need(re.findall(r'(?<!\S)'+re.escape(option)+r'\s+(\S+)', command) == ([value] if iterate else []),
+                 'Unexpected route-constraint iteration option: '+option)
+    if not is_place:
+        need(text.count('MEMS_PANGO_PLACE_COMPLETE') == 1, 'PNR recipe requires one completed placement')
+        route_text = text.split('MEMS_PANGO_PLACE_COMPLETE', 1)[1].split('MEMS_PANGO_PNR_COMPLETE', 1)[0]
+        sizes = re.findall(r'^Route thread size:\s*(\d+)\s*$', route_text, re.M)
+        need(sizes and all(size == '5' for size in sizes), 'Missing or inconsistent native five-thread routing evidence')
+        iterations = [int(value) for value in re.findall(r'^I:\s*Current iteration time:\s*(\d+)\s*$', route_text, re.M)]
+        need(not iterations or iterations == list(range(1, len(iterations)+1)) and len(iterations) <= maximum,
+             'Actual route iteration count exceeds the bound recipe')
+        need(not re.search(r'(?:Worst slack after (?:global|post global|detailed) placement|(?:Global|Detailed) placement takes)', route_text),
+             'Routing unexpectedly performed another placement')
+
+
 def check_flow_provenance(manifest, root, build, text, pre_bit, artifact, start, end):
     """Bind each Python-driven PDS process to its script and one routed DB."""
     routed = artifact('routed_database', build/'place_route'/f'{TOP}_pnr.adf', '.adf')
@@ -729,6 +942,9 @@ def check_flow_provenance(manifest, root, build, text, pre_bit, artifact, start,
     split_place = manifest.get('postplace_link') is not None
     selected_route = manifest.get('route_checkpoint_selection') is not None
     need(not split_place or split, 'Placement stage requires audited map/PCF inputs')
+    if frontend_floorplan_mode(manifest) == 'auto':
+        need(split and split_place, 'Auto placement requires complete map and placement provenance')
+        need(not selected_route, 'Auto placement does not use legacy checkpoint selection')
     expected = [('MEMS_Array', list(STAGES[:3] if split else STAGES[:-1]), 'build.tcl')]
     if split:
         if split_place:
@@ -771,6 +987,10 @@ def check_flow_provenance(manifest, root, build, text, pre_bit, artifact, start,
         script = artifact('flow_script_'+str(index), root/flow['script'], '.tcl')
         need(script == build/filename and sha(script) == flow.get('script_sha256'), 'Executed PDS script path/hash mismatch')
         lines = commands(script.read_text(encoding='utf8'))
+        if frontend_floorplan_mode(manifest) == 'auto':
+            need(not any(line.startswith('def_inst_site ') or
+                         line.startswith('add_constraint ') and 'frontend_floorplan.pcf' in line for line in lines),
+                 'Auto placement scripts must not apply frontend macro constraints')
         actions = [line for line in lines if re.match(r'^(?:'+ '|'.join(STAGES)+r'|gen_netlist)\b', line)]
         script_phases = ['place' if line.startswith('pnr ') and re.search(r'\s-place_only(?:\s|$)',line) else line.split()[0] for line in actions]
         need(script_phases == (['pnr','report_timing'] if selection_flow else stages), 'PDS script action sequence differs from completed process')
@@ -785,6 +1005,7 @@ def check_flow_provenance(manifest, root, build, text, pre_bit, artifact, start,
             need(len(native_routes) == 1, 'Missing actual staged routing completion')
             for command in (actions[0], native_routes[0]):
                 check_database_argument(command, mapped if is_place else route_input)
+            check_pnr_recipe(manifest, actions[0], native_routes[0], is_place, text)
             selected = [line for line in lines if line.startswith('add_constraint ') and physical_pcf.as_posix() in line]
             need(len(selected) == 1, 'Route script must select the audited physical PCF')
         elif stages == ['report_timing']:
@@ -806,6 +1027,126 @@ def check_flow_provenance(manifest, root, build, text, pre_bit, artifact, start,
     return flows
 
 
+def check_route_entry_recovery(manifest, root, build, log_path, artifact):
+    """Authenticate only the pre-routing PLC-entry failure and its byte prefix.
+
+    Failed evidence remains separate and hashed. It cannot stand in for an
+    actual successful routing, timing, corner export, or bitstream completion.
+    """
+    recovery = manifest.get('route_entry_recovery')
+    if recovery is None:
+        return None
+    need(isinstance(recovery, dict) and frontend_floorplan_mode(manifest) == 'auto' and
+         manifest.get('route_checkpoint_selection') is None, 'Invalid route-entry recovery mode')
+    directory = recovery.get('archive_dir')
+    need(isinstance(directory, str) and not Path(directory).is_absolute() and
+         (root/directory).resolve() == (build/'resume_before_route').resolve(),
+         'Route-entry recovery archive must belong to this build')
+    archive = (root/directory).resolve()
+    paths = {name: artifact('route_entry_previous_'+name, archive/filename, suffix)
+             for name, filename, suffix in (('build_log', 'build.log', '.log'),
+                 ('manifest', 'manifest.json', '.json'), ('route_script', 'route.tcl', '.tcl'),
+                 ('build_recipe', 'build.py', '.py'))}
+    for name, path in paths.items():
+        need(sha(path) == recovery.get('previous_'+name+'_sha256'),
+             'Route-entry recovery archived identity mismatch: '+name)
+    previous = read_json(paths['manifest'])
+    need(previous.get('status') == 'FAIL' and previous.get('exit_code') == 1 and
+         previous.get('sources_unchanged') is True and
+         previous.get('start_stage') == 'compile' and previous.get('requested_stage') == 'gen_bit_stream',
+         'Route-entry recovery must preserve the failed full-build manifest')
+    need(previous.get('device') == manifest.get('device') and
+         previous.get('started_at') == manifest.get('started_at'),
+         'Route-entry recovery changed build origin')
+    recovered_at = timestamp(recovery.get('recovered_at'))
+    end = timestamp(manifest['completed_at']) if manifest.get('completed_at') else datetime.now().astimezone().timestamp()
+    need(timestamp(previous['started_at']) <= timestamp(previous['completed_at']) <= recovered_at <= end+1,
+         'Route-entry recovery timestamps are invalid')
+    old_sources, new_sources = previous.get('source_sha256'), manifest.get('source_sha256')
+    recipe_source = 'fpga/scripts/build.py'
+    need(isinstance(old_sources, dict) and isinstance(new_sources, dict) and
+         set(old_sources) == set(new_sources) and recipe_source in old_sources and
+         all(old_sources[key] == new_sources[key] for key in old_sources if key != recipe_source),
+         'Route-entry recovery may change only the build recipe source')
+    need(sha(paths['build_recipe']) == old_sources[recipe_source] and
+         sha(root/recipe_source) == new_sources[recipe_source],
+         'Route-entry recovery build recipe source binding mismatch')
+    old_implementation, new_implementation = previous.get('implementation', {}), manifest.get('implementation', {})
+    need({k:v for k,v in old_implementation.items() if k != 'route_constraint_iteration'} ==
+         {k:v for k,v in new_implementation.items() if k != 'route_constraint_iteration'},
+         'Route-entry recovery changed placement or routing parameters')
+    old_iteration = old_implementation.get('route_constraint_iteration', {})
+    new_iteration = new_implementation.get('route_constraint_iteration', {})
+    need(old_iteration.get('enabled') is False and old_iteration.get('maximum') == 1 and
+         new_iteration.get('enabled') is True and type(new_iteration.get('maximum')) is int and
+         new_iteration['maximum'] in (1, 2) and
+         {k:v for k,v in old_iteration.items() if k not in ('enabled', 'maximum')} ==
+         {k:v for k,v in new_iteration.items() if k not in ('enabled', 'maximum')},
+         'Route-entry recovery did not repair only the PLC routing entry')
+    need(previous.get('flow_evidence') == manifest.get('flow_evidence', [])[:2] and
+         isinstance(previous.get('flow_evidence'), list) and
+         [row.get('stages') for row in previous['flow_evidence']] == [list(STAGES[:3]), ['place']] and
+         all(row.get('exit_code') == 0 for row in previous['flow_evidence']),
+         'Route-entry recovery changed completed compile/map/place evidence')
+    need(all(timestamp(previous['started_at']) <= timestamp(row['completed_at']) <=
+             timestamp(previous['completed_at']) for row in previous['flow_evidence']),
+         'Route-entry recovery completed input stages postdate the archived failure')
+    for key in ('postmap_constraints', 'postplace_link'):
+        need(previous.get(key) is not None and previous[key] == manifest.get(key),
+             'Route-entry recovery changed map/PCF/placement linkage: '+key)
+    placed = artifact('route_entry_same_placed_input', build/'place_route'/f'{TOP}_placed_input.adf', '.adf')
+    plc = artifact('route_entry_original_placed_database', build/'place_route'/f'{TOP}_plc.adf', '.adf')
+    need(sha(placed) == sha(plc) == previous['postplace_link'].get('placed_db_sha256'),
+         'Route-entry recovery does not use the same completed PLC database')
+    original_bytes = paths['build_log'].read_bytes()
+    markers = list(re.finditer(rb'(?m)^MEMS_PANGO_PLACE_COMPLETE\r?\n', original_bytes))
+    retained = recovery.get('retained_log_bytes')
+    need(len(markers) == 1 and type(retained) is int and retained == markers[0].end(),
+         'Route-entry recovery must retain exactly the completed-placement byte prefix')
+    prefix = original_bytes[:retained]
+    need(hashlib.sha256(prefix).hexdigest() == recovery.get('retained_log_sha256') and
+         Path(log_path).resolve() == (build/'build.log').resolve() and Path(log_path).read_bytes().startswith(prefix),
+         'Route-entry recovery retained log prefix identity mismatch')
+    before = prefix.decode('utf-8')
+    failed = original_bytes[retained:].decode('utf-8')
+    need(not re.search(r'(?m)^[ \t]*E:', before), 'Route-entry recovery completed prefix contains a tool error')
+    prefix_markers = re.findall(r'(?m)^MEMS_PANGO_(\w+)_COMPLETE\s*$', before)
+    prefix_completions = list(re.finditer(r'^Executing : ('+'|'.join(STAGES)+r')((?: [^\r\n]*)?) successfully\.[ \t]*\r?$', before, re.M))
+    prefix_stages = ['place' if row[1] == 'pnr' and re.search(r'\s-place_only(?:\s|$)', row[2]) else row[1]
+                     for row in prefix_completions]
+    need(prefix_markers == ['COMPILE', 'SYNTHESIZE', 'DEV_MAP', 'PLACE'] and
+         prefix_stages == ['compile', 'synthesize', 'dev_map', 'place'],
+         'Route-entry recovery prefix does not prove only completed compile/map/place')
+    failures = re.findall(r"(?m)^E: Flow-0013: The input DB '([^'\r\n]+)' should be of phase 'DEVMAP'\.[ \t]*\r?$", failed)
+    need(len(failures) == 1 and Path(failures[0]).resolve() == placed.resolve(),
+         'Route-entry recovery is not the specific pre-routing PLC/DEVMAP failure')
+    other_errors = [line for line in failed.splitlines() if re.match(r'^[ \t]*E:', line) and
+                    not re.fullmatch(r"E: Flow-0013: The input DB '[^']+' should be of phase 'DEVMAP'\.[ \t]*", line) and
+                    not re.fullmatch(r'E: Failed to execute the script\s*:\s*', line)]
+    need(not other_errors and not re.search(r'(?m)^(?:I: Current iteration time:|Route thread size:|Routing started\.|Finished routing\.|MEMS_PANGO_\w+_COMPLETE)', failed) and
+         not re.search(r"has been routed successfully|^Executing : (?:pnr|report_timing|gen_netlist|gen_bit_stream)[^\r\n]* successfully\.", failed, re.M),
+         'Route-entry recovery archive contains another error or started/completed routing')
+    route_commands = commands(paths['route_script'].read_text(encoding='utf-8'))
+    actions = [line for line in route_commands if re.match(r'^(?:'+ '|'.join(STAGES)+r'|gen_netlist)\b', line)]
+    need([line.split()[0] for line in actions] == ['pnr', 'report_timing'] and
+         not any(re.match(r'^(?:puts|exec|file|flush)\b', line) for line in route_commands),
+         'Route-entry recovery archived route script is not the original queued flow')
+    inputs = re.findall(r'-input_db_file\s+(\{[^}]+\}|"[^"]+"|\S+)', actions[0])
+    need(len(inputs) == 1 and Path(inputs[0].strip('{}"')).resolve() == placed.resolve() and
+         not re.search(r'-enable_route_constraint_iterate|-route_constraint_(?:iterate_times|slack|max_timing_path)|-place_only', actions[0]),
+         'Route-entry recovery archived route recipe differs from the failed PLC entry')
+    attempted = re.findall(r'^Executing : (pnr(?: [^\r\n]*)?)[ \t]*\r?$', failed, re.M)
+    normalize = lambda command: command.replace('{', '').replace('}', '').replace('"', '').split()
+    need(len(attempted) == 1 and normalize(attempted[0]) == normalize(actions[0]),
+         'Route-entry recovery original route command was not actually attempted')
+    return {'status': 'PASS', 'scope': 'authenticated_pre_route_entry_recovery',
+            'archived_failure_status': 'FAIL', 'archive_dir': directory,
+            'recovered_at': recovery['recovered_at'], 'retained_log_bytes': retained,
+            'retained_log_sha256': recovery['retained_log_sha256'],
+            'previous_sha256': {name: sha(path) for name, path in paths.items()},
+            'same_placed_db_sha256': sha(placed), 'permitted_source_change': recipe_source}
+
+
 def check_postmap_link(manifest, root, build, text, artifact):
     """A split flow must prove immutable map/PCF inputs, not merely stage names."""
     link = manifest['postmap_constraints']
@@ -817,21 +1158,30 @@ def check_postmap_link(manifest, root, build, text, artifact):
     need(template.is_file(), 'Missing floorplan source template')
     for field, path in [('mapped_db_sha256', mapped), ('base_pcf_sha256', base), ('route_pcf_sha256', pcf), ('template_sha256', template)]:
         need(link.get(field) == sha(path), 'Postmap input hash mismatch: '+field)
-    need(pcf.read_bytes() == base.read_bytes()+b'\n'+template.read_bytes(),
-         'Physical PCF is not the exact generated base plus reviewed template')
-    # No clocks, false paths, or arbitrary Tcl can enter through the template.
-    locations = []
-    for line in commands(template.read_text(encoding='ascii')):
-        m = re.fullmatch(r'def_inst_site \{(core/frontend/fir[12]/[^{}]+)\} ((APM|DRM)_\d+_\d+) (XAPM_CORE_[UD]|DRM0)', line)
-        need(m is not None, 'Floorplan template contains an unexpected command')
-        cell, site, kind, element = m.groups()
-        need((kind == 'APM' and re.fullmatch(r'core/frontend/fir[12]/N\d+/gopapm', cell) and element.startswith('XAPM_CORE_')) or
-             (kind == 'DRM' and re.fullmatch(r'core/frontend/fir[12]/lane\[\d+\]\.history(?:_[01])?/gopdrm_36k', cell) and element == 'DRM0'),
-             'Unexpected floorplan resource/instance mapping')
-        locations.append((cell, site, element, kind))
-        need('Executing : '+line+' successfully' in text, 'Floorplan location was not actually accepted: '+cell)
-    need(len(locations) == 176 and Counter(row[3] for row in locations) == {'APM':128, 'DRM':48}, 'Incomplete frontend floorplan')
-    need(len({row[0] for row in locations}) == 176 and len({row[1:3] for row in locations}) == 176, 'Duplicate floorplan cell/site')
+    mode = frontend_floorplan_mode(manifest)
+    if 'frontend_floorplan_mode' in manifest.get('implementation', {}):
+        need(link.get('frontend_floorplan_mode') == mode and link.get('template_applied') is (mode == 'fixed'),
+             'Postmap frontend mode/application differs from manifest')
+    if mode == 'auto':
+        need(pcf.read_bytes() == base.read_bytes(), 'Auto physical PCF is not the exact generated base')
+        need(not re.search(r'^Executing : def_inst_site\b', text, re.M),
+             'Auto placement log applies fixed macro locations')
+    else:
+        need(pcf.read_bytes() == base.read_bytes()+b'\n'+template.read_bytes(),
+             'Physical PCF is not the exact generated base plus reviewed template')
+        # No clocks, false paths, or arbitrary Tcl can enter through the template.
+        locations = []
+        for line in commands(template.read_text(encoding='ascii')):
+            m = re.fullmatch(r'def_inst_site \{(core/frontend/fir[12]/[^{}]+)\} ((APM|DRM)_\d+_\d+) (XAPM_CORE_[UD]|DRM0)', line)
+            need(m is not None, 'Floorplan template contains an unexpected command')
+            cell, site, kind, element = m.groups()
+            need((kind == 'APM' and re.fullmatch(r'core/frontend/fir[12]/N\d+/gopapm', cell) and element.startswith('XAPM_CORE_')) or
+                 (kind == 'DRM' and re.fullmatch(r'core/frontend/fir[12]/lane\[\d+\]\.history(?:_[01])?/gopdrm_36k', cell) and element == 'DRM0'),
+                 'Unexpected floorplan resource/instance mapping')
+            locations.append((cell, site, element, kind))
+            need('Executing : '+line+' successfully' in text, 'Floorplan location was not actually accepted: '+cell)
+        need(len(locations) == 176 and Counter(row[3] for row in locations) == {'APM':128, 'DRM':48}, 'Incomplete frontend floorplan')
+        need(len({row[0] for row in locations}) == 176 and len({row[1:3] for row in locations}) == 176, 'Duplicate floorplan cell/site')
     pins = pins_from_fdc((root/'fpga/constraints/board_pins.fdc').read_text())
     base_ports = {}
     for line in commands(base.read_text(encoding='ascii')):
@@ -853,9 +1203,90 @@ def check_postmap_link(manifest, root, build, text, artifact):
     return mapped, pcf
 
 
+def check_audio_config_cdc(root, fdc, timing):
+    """Prove the source mailbox contract and its whole-domain routing coverage.
+
+    The 56 held bits are bundled data, never independent bit synchronizers.
+    Request/ACK traverse preserved two-stage chains. Alive is a local reset
+    release chain; its asynchronous bridge reset is not a sampled data bus.
+    No synthesized instance name is used as a substitute for timing coverage.
+    """
+    paths = ('rtl/diag/audio_config_cdc.sv', 'rtl/diag/board_uart_diagnostics.sv',
+             'rtl/board/mems_array_pg2l200h.sv', 'rtl/board/pango_board_clocks.v')
+    source = {}
+    for relative in paths:
+        value = (root/relative).read_text()
+        value = re.sub(r'/\*.*?\*/|//[^\n]*', '', value, flags=re.S)
+        source[relative] = re.sub(r'\s+', '', value)
+    cdc = source[paths[0]]
+    signatures = (
+        'wire[55:0]desired={desired_enable,desired_channel,desired_even_gain,desired_odd_gain};',
+        'wirebridge_rst_n=ref_rst_n&&audio_rst_n;',
+        '(*syn_preserve=1*)reg[55:0]held,accepted;',
+        '(*async_reg="true",syn_preserve=1*)regalive_meta,alive_sync,ack_meta,ack_sync;',
+        '(*async_reg="true",syn_preserve=1*)regrequest_meta,request_sync;',
+        'elsebeginalive_meta<=1;alive_sync<=alive_meta;end',
+        'ack_meta<=acknowledge;ack_sync<=ack_meta;',
+        'request_meta<=request_toggle;request_sync<=request_meta;',
+        'elseif(waiting)beginif(ack_sync==request_toggle)beginwaiting<=0;accepted<=held;dirty<=0;endend',
+        'elseif(dirty||accepted!=desired)beginheld<=desired;request_toggle<=~request_toggle;waiting<=1;end',
+        'if(!audio_gain_cfg_valid&&request_sync!=acknowledge)begin'
+        'audio_even_gain<=held[47:24];audio_odd_gain<=held[23:0];audio_gain_cfg_valid<=1;',
+        'elseif(audio_gain_cfg_valid&&audio_gain_cfg_ready)begin'
+        'audio_i2s_enable<=held[55];audio_i2s_channel<=held[54:48];'
+        'audio_gain_cfg_valid<=0;acknowledge<=request_sync;')
+    for signature in signatures:
+        need(cdc.count(signature) == 1, 'Audio configuration CDC contract changed: '+signature)
+    events = re.findall(r'always@\(([^)]+)\)', cdc)
+    need(Counter(events) == Counter({'posedgeref_clkornegedgebridge_rst_n': 2,
+                                    'posedgeaudio_clkornegedgebridge_rst_n': 1}),
+         'Audio configuration CDC clock/reset domains changed')
+    for name, count in (('held', 2), ('request_meta', 2), ('request_sync', 2),
+                        ('ack_meta', 2), ('ack_sync', 2), ('alive_meta', 2), ('alive_sync', 2)):
+        need(len(re.findall(name+r'<=', cdc)) == count,
+             'Audio configuration CDC has an unreviewed extra assignment: '+name)
+    need('audio_config_cdcconfiguration(.ref_clk(ref_clk),.ref_rst_n(observer_rst_n),'
+         '.audio_clk(audio_clk),.audio_rst_n(audio_rst_n),' in source[paths[1]],
+         'Audio configuration bridge no longer uses the supervisor/audio clocks')
+    board = source[paths[2]]
+    for signature in ('.ref_clk_27(sys_clk_27)', '.audio_clk(audio_clk)',
+                      '.monitor_ref_clk(monitor_ref_clk)', '.ref_clk(monitor_ref_clk)'):
+        need(signature in board, 'Board audio configuration clock connection changed')
+    clocks = source[paths[3]]
+    for signature in ('.I(ref_clk_27),.O(clk_27_ibuf)',
+                      'GTP_CLKBUFG u_monitor_ref(.CLKIN(clk_27_ibuf),.CLKOUT(monitor_ref_clk));'):
+        need(signature.replace(' ', '') in clocks, 'Supervisor clock is no longer the reviewed sys27 tree')
+    lines = commands(fdc)
+    need(not any(line.startswith('set_clock_groups') for line in lines),
+         'Audio configuration CDC routing bounds cannot be overridden by clock groups')
+    coverage = {}
+    for launch, capture in (('sys27', 'audio122'), ('audio122', 'sys27')):
+        bound = f'set_max_delay 7.500 -datapath_only -from [get_clocks {launch}] -to [get_clocks {capture}]'
+        hold = f'set_false_path -hold -from [get_clocks {launch}] -to [get_clocks {capture}]'
+        need(lines.count(bound) == 1 and lines.count(hold) == 1,
+             'Audio configuration CDC requires the unchanged whole-domain 7.500 ns bound')
+        extras = [line for line in lines if f'-from [get_clocks {launch}]' in line and
+                  f'-to [get_clocks {capture}]' in line and
+                  line.startswith(('set_max_delay', 'set_false_path', 'set_multicycle_path'))]
+        need(set(extras) == {bound, hold}, 'Audio configuration CDC has an overriding timing exception')
+        for corner in ('Slow', 'Fast'):
+            rows = [p for p in timing['summaries']['Setup/'+corner]
+                    if tuple(p['clocks']) == (launch, capture)]
+            need(len(rows) == 1 and rows[0]['total_endpoints'] > 0 and
+                 rows[0]['failing_endpoints'] == 0 and math.isfinite(rows[0]['worst_slack_ns']) and
+                 rows[0]['worst_slack_ns'] >= 0,
+                 'Audio configuration CDC lacks passing two-corner whole-domain coverage')
+            coverage[f'{launch}->{capture}/{corner}'] = rows[0]
+    return {'payload_bits': 56, 'routing_bound_ns': 7.5, 'request_ack_sync_stages': 2,
+            'alive_reset_release_stages': 2, 'held_stable_until_ack': True,
+            'coverage_scope': 'every path in sys27/audio122 domains, including held payload and first-stage request/ACK',
+            'source_sha256': {relative: sha(root/relative) for relative in paths},
+            'physical_coverage': coverage}
+
+
 def audit(args, root=ROOT):
     root = root.resolve()
-    script_paths = [Path(__file__).resolve(), root/'fpga/scripts/check_pdm_budget.py', root/'fpga/scripts/check_tx_source.py']
+    script_paths = [Path(__file__).resolve(), root/'fpga/scripts/check_pdm_budget.py', root/'fpga/scripts/check_tx_source.py',root/'fpga/scripts/check_i2s_budget.py',root/'fpga/scripts/check_uart_vendor.py']
     scripts = {str(path): {'path': str(path), 'sha256': sha(path)} for path in script_paths}
     manifest_path, regression_path = Path(args.manifest).resolve(), Path(args.regression).resolve()
     manifest_hash, regression_hash = sha(manifest_path), sha(regression_path)
@@ -878,12 +1309,18 @@ def audit(args, root=ROOT):
     need(manifest.get('source_sha256') == current, 'Build sources/coefficients/constraints changed, were added or were removed')
     need(regression.get('status') == 'PASS' and regression.get('vendor_included') is True and regression.get('models_reused') is False, 'Release requires full model and vendor regression PASS')
     need(set(regression.get('steps', {})) == set(STEPS) and all(regression['steps'][s].get('status') == 'PASS' for s in STEPS), 'Incomplete full regression steps')
+    uart_probe_path=root/'log/vendor_uart/result.json'
+    need(uart_probe_path.is_file(),'Missing mandatory UART vendor regression result')
+    uart_probe_hash=sha(uart_probe_path)
+    need(regression['steps']['vendor_uart'].get('evidence')=={'path':'log/vendor_uart/result.json','sha256':uart_probe_hash},
+         'Full regression UART vendor result path/hash mismatch')
     regression_sources = scanned_sources(root)
     need(regression.get('sources_sha256') == regression_sources, 'Regression source set/hash differs from current workspace')
     need({k: v for k, v in current.items() if k.startswith('rtl/')} == {k: v for k, v in regression_sources.items() if k.startswith('rtl/')}, 'Build and regression used different RTL/coefficient headers')
     vectors = {p.relative_to(root).as_posix(): sha(p) for p in sorted((root/'tb/vectors').glob('*')) if p.is_file()}
     need(vectors and regression.get('vectors_sha256') == vectors, 'Reference vector set/hash mismatch')
-    evidence = {}
+    evidence = {'vendor_uart_regression':{'path':str(uart_probe_path),'bytes':uart_probe_path.stat().st_size,'sha256':uart_probe_hash}}
+    fir_ram = check_fir_ram(root, regression, evidence)
     build = manifest_path.parent
 
     def artifact(label, value, suffix=None):
@@ -908,6 +1345,8 @@ def audit(args, root=ROOT):
         ('build_log', args.build_log or build/'build.log', '.log')):
         texts[label] = artifact(label, value, suffix).read_text(encoding='utf-8', errors='replace')
     build_log = texts['build_log']
+    route_entry_recovery = check_route_entry_recovery(manifest, root, build,
+        args.build_log or build/'build.log', artifact)
     need(not re.search(r'^[ \t]*E:[ \t]+', build_log, re.M), 'PDS build log contains errors')
     route_selection = check_route_selection(manifest, root, build, build_log, artifact)
     stage_completions = check_stage_log(build_log, pre_bit, manifest.get('postplace_link') is not None, route_selection)
@@ -929,7 +1368,10 @@ def audit(args, root=ROOT):
     constraints = check_constraints(texts['constraints_report'], fdc, pins, root)
     timing = check_timing(texts['timing_report'], texts['timing_log'], fdc, root/'fpga/constraints/timing.fdc',
                           build/'place_route'/f'{TOP}_pnr.adf' if route_selection is not None else None)
+    audio_configuration_cdc = check_audio_config_cdc(root, fdc, timing)
     physical = check_physical(args, root, build, artifact, scripts, timing, fdc)
+    need(physical['results']['uart_vendor']['probe'].get('result_sha256')==uart_probe_hash,
+         'Fresh UART helper used another regression result')
     if not pre_bit:
         need(args.bitstream is not None, 'Final release requires --bitstream')
         # PDS "Create Bit File" emits .sbit, including an unencrypted stream.
@@ -956,7 +1398,9 @@ def audit(args, root=ROOT):
                               'board_conditions': ['TXC output duty must be 45..55 percent at the PHY',
                                                    'RGMII PCB relative skew budget is at most 0.200 ns',
                                                    'PDM external round-trip propagation budget is at most 20 ns',
-                                                   'Verify PDM clock load, edge rates and duty with all microphones connected']},
+                                                   'Verify PDM clock load, edge rates and duty with all microphones connected',
+                                                   'I2S DAC input and L5 bank operate at 3.3 V',
+                                                   'I2S relative wiring/edge delay budget is at most 20 ns; verify actual DAC setup/hold and clock waveforms']},
             'checked_at': datetime.now().astimezone().isoformat(), 'device': manifest['device'],
             'build_started_at': manifest['started_at'], 'build_completed_at': manifest.get('completed_at'),
             'build_manifest': {'path': str(manifest_path), 'sha256': manifest_hash},
@@ -964,9 +1408,9 @@ def audit(args, root=ROOT):
             'checker_sha256': scripts[str(Path(__file__).resolve())]['sha256'], 'audit_scripts': scripts,
             'source_sha256': current, 'vectors_sha256': vectors, 'evidence': evidence,
             'stage_completions': stage_completions,
-            'flow_evidence': flow_evidence,
+            'flow_evidence': flow_evidence, 'route_entry_recovery': route_entry_recovery,
             'mapping': mapping, 'constraints': constraints, 'timing': timing, 'physical': physical,
-            'pll_validation': pll_validation}
+            'pll_validation': pll_validation, 'audio_configuration_cdc': audio_configuration_cdc, 'fir_ram_regression': fir_ram}
 
 
 def parser():

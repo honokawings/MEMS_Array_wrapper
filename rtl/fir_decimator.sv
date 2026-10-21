@@ -24,11 +24,18 @@ module fir_decimator #(
     localparam integer TW = $clog2(TAPS+1);
     localparam integer DW = (DECIMATION < 2) ? 1 : $clog2(DECIMATION);
     reg [CHANNELS*32-1:0] input_hold;
-    reg writing, busy;
+    reg writing /* synthesis syn_maxfan=256 */;
+    reg busy;
     reg [GW-1:0] write_group, compute_group;
     reg [AW-1:0] write_pointer, base_pointer;
     reg [DW-1:0] decimation_phase;
     reg [TW-1:0] history_count, job_history, issue_count;
+    // Register each complete write transaction before the RAM port.  The
+    // lane data mux can now end at local fabric registers rather than a
+    // distant fixed RAM site; address, enable and last use the same latency.
+    reg write_commit_valid /* synthesis syn_maxfan=256 */;
+    reg write_commit_last;
+    reg [GW+AW-1:0] write_commit_address /* synthesis syn_maxfan=256 */;
     reg read_valid /* synthesis syn_maxfan=256 */;
     reg partial_valid /* synthesis syn_maxfan=256 */;
     reg middle_valid /* synthesis syn_maxfan=256 */;
@@ -86,12 +93,14 @@ module fir_decimator #(
             write_group<=0; compute_group<=0;
             write_pointer<=0; base_pointer<=0; decimation_phase<=0;
             history_count<=0; job_history<=0; issue_count<=0;
+            write_commit_valid<=0; write_commit_last<=0; write_commit_address<=0;
             read_valid<=0; partial_valid<=0; middle_valid<=0; product_valid<=0;
             read_last<=0; partial_last<=0; middle_last<=0; product_last<=0;
             final_valid<=0; final_group<=0;
             read_coefficient<=0; valid_o<=0; overrun_o<=0;
         end else begin
             valid_o<=0;
+            write_commit_valid<=writing;
             read_valid<=issue;
             partial_valid<=read_valid; partial_last<=read_last;
             middle_valid<=partial_valid; middle_last<=partial_last;
@@ -118,17 +127,25 @@ module fir_decimator #(
             end
             if(capture_input) input_hold<=data_i;
             if(writing) begin
+                write_commit_address<=write_group*DEPTH+write_pointer;
+                write_commit_last<=(write_group==GROUPS-1);
                 if(write_group==GROUPS-1) begin
-                    writing<=0; write_pointer<=write_pointer+1'b1;
-                    if(decimation_phase==DECIMATION-1) begin
-                        decimation_phase<=0;
-                        if(busy) overrun_o<=1;
-                        else begin
-                            busy<=1; compute_group<=0; issue_count<=0;
-                            base_pointer<=write_pointer; job_history<=history_count;
-                        end
-                    end else decimation_phase<=decimation_phase+1'b1;
+                    writing<=0;
                 end else write_group<=write_group+1'b1;
+            end
+            // Start only after the final RAM write is committed.  In the
+            // GROUPS=1 case the first issue is the following edge, so the
+            // newest sample is never read on its write edge.
+            if(write_commit_valid && write_commit_last) begin
+                write_pointer<=write_commit_address[AW-1:0]+1'b1;
+                if(decimation_phase==DECIMATION-1) begin
+                    decimation_phase<=0;
+                    if(busy) overrun_o<=1;
+                    else begin
+                        busy<=1; compute_group<=0; issue_count<=0;
+                        base_pointer<=write_commit_address[AW-1:0]; job_history<=history_count;
+                    end
+                end else decimation_phase<=decimation_phase+1'b1;
             end
         end
     end
@@ -136,6 +153,13 @@ module fir_decimator #(
     generate for(l=0;l<LANES;l=l+1) begin: lane
         // No RAM reset: job_history masks uninitialised locations after restart.
         reg signed [31:0] history [0:GROUPS*DEPTH-1];
+        (* syn_preserve=1 *) reg [GW-1:0] local_write_group;
+        always @(posedge clk) begin
+            if(clear_state) local_write_group<=0;
+            else if(capture_input) local_write_group<=0;
+            else if(writing && write_group!=GROUPS-1) local_write_group<=local_write_group+1'b1;
+        end
+        reg signed [31:0] write_data /* synthesis syn_preserve=1 syn_keep=1 */;
         reg signed [31:0] read_sample;
         reg [31:0] product_ll;
         reg signed [32:0] product_lh, product_hl;
@@ -145,7 +169,6 @@ module fir_decimator #(
         reg signed [63:0] product;
         reg signed [71:0] accumulator, final_sum;
         wire signed [71:0] sum = accumulator + {{8{product[63]}},product};
-        wire signed [71:0] rounded_sum = rounded(final_sum);
         // a*b = ll + ((lh+hl)<<16) + (hh<<32).  Carry-save compression
         // adds the three middle operands with only one 34-bit carry chain.
         wire [33:0] middle_a = {product_lh[32],product_lh};
@@ -155,12 +178,39 @@ module fir_decimator #(
         wire [33:0] middle_carry = ((middle_a & middle_b) | (middle_a & middle_c) | (middle_b & middle_c)) << 1;
         wire signed [31:0] upper_product = high_product + {{14{middle_product[33]}},middle_product[33:16]};
         reg [GROUPS*32-1:0] result;
+        // Decode the upper increment in parallel with the low 32-bit add.
+        // These predicates preserve the legacy signed 42-bit wrap, including
+        // artificial 72-bit positive extremes; no register/enable is changed.
+        wire [41:0] round_quotient = final_sum[71:30];
+        wire [31:0] round_low = round_quotient[31:0];
+        wire [9:0] round_high = round_quotient[41:32];
+        wire round_increment = final_sum[29] &&
+            (!final_sum[71] || (|final_sum[28:0]));
+        wire round_carry32 = round_increment && (&round_low);
+        wire round_high_zero = (!round_carry32 && round_high == 10'd0) ||
+            (round_carry32 && round_high == 10'd1023);
+        wire round_high_ones = (!round_carry32 && round_high == 10'd1023) ||
+            (round_carry32 && round_high == 10'd1022);
+        wire round_high_sign = round_high[9] ^
+            (round_carry32 && (&round_high[8:0]));
+        wire round_low_sign = round_low[31] ^
+            (round_increment && (&round_low[30:0]));
+        wire [31:0] rounded_low = round_low + {31'b0,round_increment};
+        wire result_overflow_pos = !round_high_sign &&
+            (!round_high_zero || round_low_sign);
+        wire result_overflow_neg = round_high_sign &&
+            (!round_high_ones || !round_low_sign);
+        wire [31:0] saturated_result = result_overflow_pos ? 32'h7fffffff :
+            result_overflow_neg ? 32'h80000000 : rounded_low;
         reg clipped;
         assign lane_clip[l]=clipped;
         // Synchronous simple-dual-port RAM template.
         always @(posedge clk) begin
-            if(rst_n && writing)
-                history[write_group*DEPTH+write_pointer] <= input_hold[(write_group*LANES+l)*32 +: 32];
+            // A valid commit consumes the old data staged on the preceding
+            // writing edge. Idle/reset refreshes do not commit to RAM.
+            write_data <= input_hold[(local_write_group*LANES+l)*32 +: 32];
+            if(rst_n && write_commit_valid)
+                history[write_commit_address] <= write_data;
             if(issue) begin
                 if(issue_count<job_history) read_sample<=history[compute_group*DEPTH+read_pointer];
                 else read_sample<=0;
@@ -170,7 +220,7 @@ module fir_decimator #(
             if(clear_state) begin
                 product_ll<=0; product_lh<=0; product_hl<=0; product_hh<=0;
                 high_product<=0; low_product<=0; middle_product<=0;
-                product<=0; accumulator<=0; final_sum<=0; result<=0; clipped<=0;
+                product<=0; accumulator<=0; final_sum<=0; clipped<=0;
             end else begin
                 // Each multiplier fits one 18x18 hardware multiplier.  In
                 // particular, low halves are positive 17-bit signed operands.
@@ -191,16 +241,16 @@ module fir_decimator #(
                     end else accumulator<=sum;
                 end
                 if(finish_product) final_sum<=sum;
-                if(final_valid) begin
-                    if(rounded_sum > 72'sd2147483647) begin
-                        result[final_group*32 +: 32]<=32'h7fffffff; clipped<=1;
-                    end else if(rounded_sum < -72'sd2147483648) begin
-                        result[final_group*32 +: 32]<=32'h80000000; clipped<=1;
-                    end else result[final_group*32 +: 32]<=rounded_sum[31:0];
-                end
+                if(final_valid && (result_overflow_pos || result_overflow_neg))
+                    clipped<=1;
             end
         end
         for(g=0;g<GROUPS;g=g+1) begin: flatten
+            always @(posedge clk) begin
+                if(clear_state) result[g*32 +: 32]<=0;
+                else if(final_valid && final_group==g)
+                    result[g*32 +: 32]<=saturated_result;
+            end
             assign data_o[(g*LANES+l)*32 +: 32]=result[g*32 +: 32];
         end
     end endgenerate

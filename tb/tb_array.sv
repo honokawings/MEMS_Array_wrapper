@@ -16,7 +16,14 @@ module tb_array;
     wire pcm_valid,pcm_first,pcm_last,overflow,processing_error,clipped;
     wire [31:0] dropped_frames;
     reg pcm_ready=0;
-    mems_array_top #(.STARTUP_CYCLES(STARTUP),.SETTLE_FRAMES(SETTLE)) dut(.*);
+    mems_array_top #(.STARTUP_CYCLES(STARTUP),.SETTLE_FRAMES(SETTLE)) dut(
+        .clk(clk),.rst_n(rst_n),.enable(enable),.pdm_data(pdm_data),.mic_clk(mic_clk),.started(started),
+        .cfg_valid(cfg_valid),.cfg_channel(cfg_channel),.cfg_gain(cfg_gain),.cfg_offset(cfg_offset),.cfg_ready(cfg_ready),
+        .pcm_data(pcm_data),.pcm_channel(pcm_channel),.pcm_frame_id(pcm_frame_id),
+        .pcm_valid(pcm_valid),.pcm_first(pcm_first),.pcm_last(pcm_last),.pcm_ready(pcm_ready),
+        .overflow(overflow),.dropped_frames(dropped_frames),.processing_error(processing_error),.clipped(clipped),
+        .parity_cfg_valid(1'b0),.parity_even_gain(24'd4194304),.parity_odd_gain(24'd4194304),
+        .parity_cfg_ready(),.parity_active_even_gain(),.parity_active_odd_gain(),.parity_bypass(1'b0));
     reg [127:0] pdm[0:N-1];
     reg [4095:0] exp_cic[0:N/8-1],exp_fir1[0:N/32-1],exp_fir2[0:FRAMES-1];
     reg [3071:0] exp_pcm[0:FRAMES-1];

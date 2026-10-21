@@ -5,13 +5,14 @@ param(
 )
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'parse_system_uart.ps1')
+. (Join-Path $PSScriptRoot 'audio_uart.ps1') -Port $Port
 if ($SelfTest -and $Command) { throw 'Use either -SelfTest or -Command.' }
 if ($SelfTest -and $Seconds -lt 15) { throw '-SelfTest requires at least 15 seconds.' }
 $diagRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 if (!$OutputDirectory) { $OutputDirectory=Join-Path $diagRoot ('log/system_uart/capture_'+(Get-Date -Format 'yyyyMMdd_HHmmss')) }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory)
-foreach ($file in @('raw.log','records.json','summary.json')) {
+foreach ($file in @('raw.log','records.json','audio_records.json','summary.json')) {
     if (Test-Path -LiteralPath (Join-Path $OutputDirectory $file)) { throw "Refusing to overwrite $file" }
 }
 $serial=[IO.Ports.SerialPort]::new($Port,115200,[IO.Ports.Parity]::None,8,[IO.Ports.StopBits]::One)
@@ -19,6 +20,7 @@ $serial.Handshake=[IO.Ports.Handshake]::None
 $serial.DtrEnable=$false;$serial.RtsEnable=$false;$serial.ReadTimeout=100;$serial.WriteTimeout=1000;$serial.NewLine="`n"
 $raw=[IO.StreamWriter]::new((Join-Path $OutputDirectory 'raw.log'),$false,[Text.UTF8Encoding]::new($false))
 $parsed=[Collections.Generic.List[object]]::new();$sent=[Collections.Generic.List[object]]::new()
+$audioRecords=[Collections.Generic.List[object]]::new()
 $invalid=0;$missing=0;$restarts=0;$last=$null;$firstValidAt=$null;$baseCommands=0;$next=0;$commandSent=$false
 $watch=[Diagnostics.Stopwatch]::StartNew()
 try {
@@ -42,6 +44,8 @@ try {
         }
         try { $line=$serial.ReadLine().TrimEnd([char[]]"`r`n") } catch [TimeoutException] { continue }
         $raw.WriteLine($line);$raw.Flush()
+        $audioRow=ConvertFrom-AudioUartLine -Line $line
+        if($null -ne $audioRow){$audioRecords.Add($audioRow);Write-Host "[$($audioRow.Tag)] channel=$($audioRow.ActiveChannel) fresh=$($audioRow.Fresh) pending=$($audioRow.Pending)";continue}
         $row=ConvertFrom-SystemUartLine -Line $line
         if ($null -eq $row) { $invalid++;Write-Host "[UNPARSED] $line";continue }
         if ($null -eq $firstValidAt) { $firstValidAt=$watch.Elapsed.TotalSeconds;$baseCommands=[int]$row.Commands }
@@ -79,7 +83,8 @@ if ($parsed.Count -gt 0) {
 $summary=[ordered]@{Stage=$stage;Scope='FPGA telemetry only; PC packet capture and PCM validation are separate';Port=$Port;Baud=115200;
     DurationSeconds=$Seconds;ValidRecords=$parsed.Count;InvalidLines=$invalid;MissingRecords=$missing;SessionRestarts=$restarts;
     SelfTestRequested=[bool]$SelfTest;FpgaSelftestPass=$bistPass;UdpCounterProgress=$udpProgress;
-    CommandsSent=@($sent.ToArray());Latest=$last;GeneratedAt=(Get-Date).ToString('o')}
+    CommandsSent=@($sent.ToArray());Latest=$last;AudioRecords=$audioRecords.Count;LatestAudio=($audioRecords | Select-Object -Last 1);GeneratedAt=(Get-Date).ToString('o')}
 ConvertTo-Json -InputObject @($parsed.ToArray()) -Depth 6 | Set-Content -LiteralPath (Join-Path $OutputDirectory 'records.json') -Encoding UTF8
+ConvertTo-Json -InputObject @($audioRecords.ToArray()) -Depth 6 | Set-Content -LiteralPath (Join-Path $OutputDirectory 'audio_records.json') -Encoding UTF8
 $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $OutputDirectory 'summary.json') -Encoding UTF8
 Write-Host "[$stage] $OutputDirectory"

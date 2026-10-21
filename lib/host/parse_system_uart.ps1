@@ -18,6 +18,9 @@ function ConvertFrom-SystemUartLine {
         SelftestMode=[bool]($a -band 8);Overflow=[bool]($a -band 16);ProcessingError=[bool]($a -band 32);Clipped=[bool]($a -band 64)
         SelftestPass=[bool]($a -band 128);SelftestFail=[bool]($a -band 256)
         CalibrationDone=[bool]($a -band 1024);Heartbeat=[bool]($a -band 0x00080000)
+        DcCorrectionEnabled=[bool]($a -band 0x00001000)
+        DcEstimationFinished=[bool]($a -band 0x00002000)
+        DcAnyChannelRejected=[bool]($a -band 0x00004000)
         DroppedFrames=$w[9];PcmSamples=$w[10];LastPcmFrame=$w[11]
         PhyState=($p -band 15);ConfigStep=(($p -shr 4) -band 31);PhyAddress=(($p -shr 9) -band 31)
         PhyReady=[bool]($p -band 0x4000);LinkUp=[bool]($p -band 0x8000);PhyFault=[bool]($p -band 0x10000);PhyResetReleased=[bool]($p -band 0x20000)

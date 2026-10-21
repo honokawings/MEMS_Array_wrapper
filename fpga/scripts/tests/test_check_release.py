@@ -1,9 +1,11 @@
 """Gate fixtures exercise report parsing; they are not FPGA timing evidence."""
 from datetime import datetime, timedelta
+import hashlib
 import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 import unittest
 from unittest import mock
@@ -28,7 +30,11 @@ class ReleaseGateTest(unittest.TestCase):
         self.write('rtl/mems_array_top.sv', 'pdm_capture #(.STARTUP_CYCLES(STARTUP_CYCLES)) capture(.clk(clk));\n')
         self.write('fpga/scripts/build.py', '# Fixture build script\n')
         self.write('fpga/scripts/check_pll_parameters.py', '# Fixture PLL validator\n')
-        self.write('rtl/board/pango_board_clocks.v', '// Fixture clocks, not a physical PLL\n')
+        for relative in ('rtl/board/pango_board_clocks.v', 'rtl/board/mems_array_pg2l200h.sv',
+                         'rtl/diag/audio_config_cdc.sv', 'rtl/diag/board_uart_diagnostics.sv'):
+            # Actual frozen source is checked as a contract; report rows below
+            # remain synthetic parser fixtures, never physical board evidence.
+            self.write(relative, (SCRIPT.parents[2]/relative).read_text())
         self.write('vendor_rules.tcl', '# Fixture vendor input\n')
         pll_rows=[]
         for name,fin,i,m,o in [('u_pll_eth',125.0,4,16,4),('u_pll_96',27.0,1,16,9),('u_pll_audio',96.0,5,16,5)]:
@@ -43,14 +49,25 @@ class ReleaseGateTest(unittest.TestCase):
         self.put(self.build/'validate_vendor_pll.tcl','# Fixture invocation\n')
         self.write('fpga/scripts/check_pdm_budget.py', '# Mocked helper; not timing evidence\n')
         self.write('fpga/scripts/check_tx_source.py', '# Mocked helper; not timing evidence\n')
+        self.write('fpga/scripts/check_i2s_budget.py', '# Mocked helper; not timing evidence\n')
+        self.write('fpga/scripts/check_uart_vendor.py', '# Mocked helper; not UART gate evidence\n')
+        self.write('log/vendor_uart/result.json', '{"fixture": true}\n')
+        self.write('rtl/audio/pcm_i2s_tx.sv', '// Fixture source; actual physical contract tested separately\n')
+        self.install_fir_ram_fixture()
         self.write('tb/vectors/expected_pcm.bin', b'\x01\x02\x03')
         pins = []
         for i, name in enumerate(sorted(gate.PORTS)):
             direction = 'INOUT' if name == 'PHY0_MDIO' else 'INPUT'
-            for attr, value in [('DIRECTION', direction), ('LOC', f'A{i+1}'), ('VCCIO', '3.3'), ('STANDARD', 'LVCMOS33')]:
+            i2s={'i2s_sck':'R21','i2s_bck':'N19','i2s_din':'M25','i2s_lrck':'T25'}
+            if name in i2s:direction='OUTPUT'
+            for attr, value in [('DIRECTION', direction), ('LOC', i2s.get(name,f'A{i+1}')), ('VCCIO', '3.3'), ('STANDARD', 'LVCMOS33')]:
                 pins.append(f'define_attribute {{p:{name}}} {{PAP_IO_{attr}}} {{{value}}}')
+            if name in i2s:
+                pins.extend([f'define_attribute {{p:{name}}} {{PAP_IO_DRIVE}} {{8}}',f'define_attribute {{p:{name}}} {{PAP_IO_SLEW}} {{FAST}}'])
         self.pin_fdc = '\n'.join(pins)+'\n'
         self.fdc = 'set_max_delay 5.000 -datapath_only -from [get_ports {pdm_data[*]}] -to [get_cells -hierarchical {*data_meta*}]\nset_max_delay 4.000 -datapath_only -to [get_ports {mic_clk[*]}]\nset_input_delay -max 0 -clock audio122 [get_ports {pdm_data[*]}]\n'
+        self.fdc += ''.join(f'set_max_delay 7.500 -datapath_only -from [get_clocks {a}] -to [get_clocks {b}]\nset_false_path -hold -from [get_clocks {a}] -to [get_clocks {b}]\n'
+                            for a,b in (('sys27','audio122'),('audio122','sys27')))
         self.write('fpga/constraints/board_pins.fdc', self.pin_fdc)
         self.write('fpga/constraints/timing.fdc', self.fdc)
         self.rtr = self.build/'report_timing'/f'{gate.TOP}.rtr'
@@ -88,6 +105,10 @@ class ReleaseGateTest(unittest.TestCase):
                            'steps': {s: {'status': 'PASS'} for s in gate.STEPS},
                            'sources_sha256': gate.scanned_sources(self.root),
                            'vectors_sha256': {'tb/vectors/expected_pcm.bin': gate.sha(self.root/'tb/vectors/expected_pcm.bin')}}
+        self.regression['steps']['vendor_uart']['evidence']={'path':'log/vendor_uart/result.json',
+            'sha256':gate.sha(self.root/'log/vendor_uart/result.json')}
+        self.regression['steps']['fir_ram']['evidence']={'path':gate.FIR_RAM_RESULT,
+            'sha256':gate.sha(self.root/gate.FIR_RAM_RESULT)}
         self.save_json()
         self.args = gate.parser().parse_args([
             '--manifest', str(self.build/'manifest.json'), '--regression', str(self.root/'log/full_regression.json'),
@@ -95,6 +116,46 @@ class ReleaseGateTest(unittest.TestCase):
             '--bitstream', str(self.bit), '--output', str(self.build/'release.json')])
         self.helper_mock = mock.patch.object(gate, 'run_helper', side_effect=self.helper_result).start()
         self.addCleanup(mock.patch.stopall)
+
+    def install_fir_ram_fixture(self):
+        """Synthetic RAM logs validate binding/parser failures, not FIR correctness."""
+        for rel in gate.FIR_RAM_SOURCES:
+            if not (self.root/rel).exists():
+                self.write(rel, '00000001\n' if rel.endswith('.hex') else '// FIR RAM source fixture\n')
+        tools = {}
+        for name in ('vlib', 'vlog', 'vsim'):
+            self.write('tools/'+name+'.EXE', 'Fixture executable: not a simulation tool\n')
+            path = self.root/'tools'/f'{name}.EXE'
+            tools[str(path)] = gate.sha(path)
+        self.write('log/fir_ram/modelsim.ini', '[Library]\nwork = fixture_library\n')
+        cases = []
+        for i, parameters in enumerate(gate.FIR_RAM_PARAMETERS):
+            row = dict(zip(gate.FIR_RAM_FIELDS[:8], (i, *parameters)))
+            row.update(checks=100000, writes=1000, reads=10000, output_samples=1000, wraps=2,
+                       concurrent_rw=1, resets=4, commit_capture=1, writing_faults=1,
+                       busy_faults=1, input_changes=512)
+            cases.append(row)
+        self.fir_ram = {'status': 'PASS', 'scope': gate.FIR_RAM_SCOPE,
+            'sources_sha256': {rel: gate.sha(self.root/rel) for rel in gate.FIR_RAM_SOURCES},
+            'reference_coefficients_sha256': {rel: gate.sha(self.root/rel) for rel in gate.FIR_RAM_SOURCES if rel.endswith('.hex')},
+            'tools_sha256': tools, 'artifacts_sha256': {'log/fir_ram/modelsim.ini': gate.sha(self.root/'log/fir_ram/modelsim.ini')},
+            'sdf_annotated': False, 'placement_routing_tested': False, 'real_serial_opened': False,
+            'started_at': self.start.isoformat(), 'completed_at': self.now.isoformat(),
+            'checks': sum(row['checks'] for row in cases), 'cases': cases, 'coverage': list(gate.FIR_RAM_COVERAGE)}
+        self.save_fir_ram_result(rewrite_logs=True)
+
+    def save_fir_ram_result(self, rewrite_logs=False):
+        if rewrite_logs:
+            self.write('log/fir_ram/vlog.log', 'FIR RAM compiler fixture\nErrors: 0, Warnings: 0\n')
+            rows = ['# [TB_DATA] FIR_RAM '+' '.join(f'{key}={row[key]}' for key in gate.FIR_RAM_FIELDS)
+                    for row in self.fir_ram['cases']]
+            self.write('log/fir_ram/vsim.log', '\n'.join(rows)+'\n# [TB_INFO] FIR_RAM all six configurations passed\n'
+                       '# [TB_INFO] Simulation Finished!\n# Errors: 0, Warnings: 0\n')
+            self.fir_ram['raw_logs_sha256'] = {rel: gate.sha(self.root/rel) for rel in ('log/fir_ram/vlog.log', 'log/fir_ram/vsim.log')}
+        self.write(gate.FIR_RAM_RESULT, json.dumps(self.fir_ram))
+        if hasattr(self, 'regression'):
+            self.regression['steps']['fir_ram']['evidence'] = {'path': gate.FIR_RAM_RESULT, 'sha256': gate.sha(self.root/gate.FIR_RAM_RESULT)}
+            self.save_json()
 
     def helper_result(self, script, arguments, output):
         """Only the orchestration is tested here; physical parsers have real probes."""
@@ -104,6 +165,25 @@ class ReleaseGateTest(unittest.TestCase):
                       'checker_sha256': gate.sha(script),
                       'corners': {c: {'remaining_ns': 1.0} for c in ('slow', 'fast')},
                       'evidence': {k: {'path': str(p), 'sha256': gate.sha(p)} for k, p in pairs.items()}}
+        elif script.name=='check_uart_vendor.py':
+            result={'schema':'uart-vendor-and-routed-channel-v1','status':'PASS','scope':'engineering_board_bringup',
+                    'checker_sha256':gate.sha(script),'dependency_sha256':gate.sha(self.root/'fpga/scripts/check_tx_source.py'),
+                    'evidence':{k:{'path':str(p),'sha256':gate.sha(p)} for k,p in pairs.items() if k!='root'},
+                    'probe':{'status':'PASS','scope':'vendor_uart_technology_netlist_functional','channels':128,
+                             'variable_ff_count':7,'response_lines':143,'result_sha256':gate.sha(pairs['probe_result'])},
+                    'corners':{c:{'variable_ff_count':7,'clock_input':'sys_clk_27',
+                                  'bits':[{'bit':i,'instance':f'FF{i}'} for i in range(7)]} for c in ('slow','fast')}}
+        elif script.name=='check_i2s_budget.py':
+            result={'schema':'i2s-routed-budget-v1','status':'PASS','scope':'engineering_board_bringup',
+                    'unconditional_board_qualification':False,'checker_sha256':gate.sha(script),
+                    'dependency_sha256':gate.sha(self.root/'fpga/scripts/check_tx_source.py'),
+                    'evidence':{k:{'path':str(p),'sha256':gate.sha(p)} for k,p in pairs.items()},
+                    'contract':{'audio_clock_hz':122880000,'sck_period_cycles':10,'bck_period_cycles':40,'lrck_period_cycles':2560,
+                                'data_launch_to_bck_rise_cycles':20,'pcm5102_minimum_setup_hold_ns':8.0,'enforced_setup_hold_ns':20.0,
+                                'external_relative_delay_and_edge_budget_ns':20.0,'uncertainty_ns':0.300},
+                    'corners':{c:{'outputs':{p:{'ff_to_pad_rise_ns':1.0,'ff_to_pad_fall_ns':1.0} for p in ('i2s_sck','i2s_bck','i2s_din','i2s_lrck')},
+                                  'receiver_margins':{p:{'setup_remaining_ns':1.0,'hold_remaining_ns':1.0} for p in ('i2s_din','i2s_lrck')},
+                                  'clock_pulse_margins':{p:{'remaining_ns':1.0} for p in ('i2s_sck','i2s_bck')}} for c in ('slow','fast')}}
         else:
             result = {'schema_version': 1, 'status': 'PASS', 'scope': 'engineering_board_bringup', 'unconditional_board_qualification': False,
                       'errors': [], 'cases': [{}, {}, {}, {}], 'duty': {'status': 'PASS', 'nominal_model_status': 'PASS',
@@ -233,7 +313,8 @@ Constraints with matching wildcard expressions:
     def map_report(self):
         text = f'Generated by Fabric Compiler ( version 2022.2-SP6.4 ) at {self.now.strftime("%a %b %d %H:%M:%S %Y")}\nTiming Constraint:\n----------\n{self.fdc}\nLogical Constraint:\n'
         for name, attrs in gate.pins_from_fdc(self.pin_fdc).items():
-            text += f'| {name} | {attrs["DIRECTION"].lower()} | {attrs["LOC"]} | {attrs["VCCIO"]} | {attrs["STANDARD"]} |\n'
+            extra=' 8 | | FAST |' if name.startswith('i2s_') else ''
+            text += f'| {name} | {attrs["DIRECTION"].lower()} | {attrs["LOC"]} | {attrs["VCCIO"]} | {attrs["STANDARD"]} |'+extra+'\n'
         return text
 
     def test_mapped_drive_and_slew_are_checked(self):
@@ -255,7 +336,7 @@ Constraints with matching wildcard expressions:
         self.assertTrue(result['release_authorized'])
         self.assertEqual(len(result['timing']['summaries']), 10)
         self.assertEqual(result['evidence']['bitstream']['sha256'], gate.sha(self.bit))
-        self.assertEqual(result['mapping']['ports'], 99)
+        self.assertEqual(result['mapping']['ports'], 103)
 
     def test_pre_bit_running_without_unchanged(self):
         self.args.pre_bit = True
@@ -431,10 +512,197 @@ Constraints with matching wildcard expressions:
 
     def test_helper_scripts_and_raw_files_are_recorded(self):
         result = gate.audit(self.args, self.root)
-        self.assertEqual(len(result['audit_scripts']), 3)
-        self.assertEqual(set(result['physical']['results']), {'pdm', 'tx'})
+        self.assertEqual(len(result['audit_scripts']), 5)
+        self.assertEqual(set(result['physical']['results']), {'pdm', 'tx','i2s','uart_vendor'})
         self.assertIn('timing_database', result['evidence'])
         self.assertIn('fast_sdf', result['evidence'])
+
+    def test_i2s_independent_budget_cannot_be_asserted_with_missing_or_changed_evidence(self):
+        original=self.helper_result
+        for case in ('hash','raw_hash','corner','pad','setup','hold','pulse','budget','scope'):
+            def change(script,arguments,output):
+                result=original(script,arguments,output)
+                if script.name=='check_i2s_budget.py':
+                    if case=='hash':result['checker_sha256']='0'*64
+                    if case=='raw_hash':result['evidence']['fast_sdf']['sha256']='0'*64
+                    if case=='corner':del result['corners']['fast']
+                    if case=='pad':result['corners']['slow']['outputs']['i2s_sck']['ff_to_pad_rise_ns']=4.01
+                    if case in ('setup','hold'):result['corners']['slow']['receiver_margins']['i2s_din'][case+'_remaining_ns']=0
+                    if case=='pulse':result['corners']['slow']['clock_pulse_margins']['i2s_sck']['remaining_ns']=float('nan')
+                    if case=='budget':result['contract']['enforced_setup_hold_ns']=8
+                    if case=='scope':result['unconditional_board_qualification']=True
+                return result
+            self.helper_mock.side_effect=change
+            with self.subTest(case=case),self.assertRaises(gate.ReleaseError):gate.audit(self.args,self.root)
+        self.helper_mock.side_effect=original
+
+    def test_i2s_ports_electrical_profile_cannot_drift(self):
+        for old,new in (('{p:i2s_sck} {PAP_IO_VCCIO} {3.3}','{p:i2s_sck} {PAP_IO_VCCIO} {1.8}'),
+                        ('{p:i2s_sck} {PAP_IO_LOC} {R21}','{p:i2s_sck} {PAP_IO_LOC} {AC26}'),
+                        ('{p:i2s_sck} {PAP_IO_DRIVE} {8}','{p:i2s_sck} {PAP_IO_DRIVE} {4}')):
+            with self.subTest(new=new),self.assertRaises(gate.ReleaseError):gate.check_map(self.map_report(),self.pin_fdc.replace(old,new),self.fdc)
+
+    def test_new_audio_regression_steps_cannot_be_omitted(self):
+        for step in ('parity','i2s','audio_uart','board_audio','vendor_uart'):
+            original=self.regression['steps'].pop(step);self.save_json()
+            with self.subTest(step=step):self.rejected('Incomplete full regression steps')
+            self.regression['steps'][step]=original;self.save_json()
+
+    def test_fir_ram_regression_cannot_be_replaced_by_arithmetic_pass(self):
+        self.assertEqual(self.regression['steps']['fir_arithmetic']['status'], 'PASS')
+        del self.regression['steps']['fir_ram']
+        self.save_json()
+        self.rejected('Incomplete full regression steps')
+
+    def test_failed_fir_ram_regression_blocks_release(self):
+        self.regression['steps']['fir_ram']['status'] = 'FAIL'
+        self.save_json()
+        self.rejected('Incomplete full regression steps')
+
+    def test_fir_ram_result_is_mandatory(self):
+        (self.root/gate.FIR_RAM_RESULT).unlink()
+        self.rejected('Missing mandatory FIR RAM regression result')
+
+    def test_fir_ram_result_hash_must_match_full_regression(self):
+        self.regression['steps']['fir_ram']['evidence']['sha256'] = '0'*64
+        self.save_json();self.rejected('FIR RAM result path/hash mismatch')
+
+    def test_fir_ram_result_without_step_evidence_is_rejected(self):
+        del self.regression['steps']['fir_ram']['evidence']
+        self.save_json();self.rejected('FIR RAM result path/hash mismatch')
+
+    def test_fir_ram_scope_cannot_be_arithmetic_only(self):
+        self.fir_ram['scope'] = 'fir_arithmetic'
+        self.save_fir_ram_result();self.rejected('actual RAM functional PASS scope')
+
+    def test_fir_ram_input_source_hash_cannot_be_asserted(self):
+        self.fir_ram['sources_sha256']['tb/tb_fir_ram_pipeline.sv'] = '0'*64
+        self.save_fir_ram_result();self.rejected('source/coefficient input path/hash mismatch')
+
+    def test_fir_ram_coefficient_input_cannot_be_omitted(self):
+        del self.fir_ram['sources_sha256']['lib/coeff/fir1_q30.hex']
+        self.save_fir_ram_result();self.rejected('source/coefficient input path/hash mismatch')
+
+    def test_fir_ram_external_reference_coefficient_change_is_rejected(self):
+        self.write('lib/coeff/fir2_q30.hex', '00000002\n')
+        self.rejected('source/coefficient input path/hash mismatch')
+
+    def test_fir_ram_reference_coefficient_hash_must_match_input(self):
+        self.fir_ram['reference_coefficients_sha256']['lib/coeff/fir1_q30.hex'] = '0'*64
+        self.save_fir_ram_result();self.rejected('reference coefficient hash mismatch')
+
+    def test_fir_ram_original_log_hash_change_is_rejected(self):
+        self.write('log/fir_ram/vsim.log', 'asserted PASS\n')
+        self.rejected('original compile/simulation log path/hash mismatch')
+
+    def test_fir_ram_original_finish_cannot_be_omitted(self):
+        p = self.root/'log/fir_ram/vsim.log'
+        self.put(p, p.read_text().replace('[TB_INFO] Simulation Finished!', 'missing finish'))
+        self.fir_ram['raw_logs_sha256']['log/fir_ram/vsim.log'] = gate.sha(p)
+        self.save_fir_ram_result();self.rejected('complete RAM coverage finish')
+
+    def test_fir_ram_raw_simulation_error_blocks_release(self):
+        p = self.root/'log/fir_ram/vsim.log'
+        self.put(p, p.read_text()+'\n# [TB_ERROR] RAM data mismatch\n')
+        self.fir_ram['raw_logs_sha256']['log/fir_ram/vsim.log'] = gate.sha(p)
+        self.save_fir_ram_result();self.rejected('simulation log contains errors/warnings')
+
+    def test_fir_ram_result_counter_must_match_actual_log(self):
+        self.fir_ram['cases'][0]['writes'] += 1
+        self.save_fir_ram_result();self.rejected('case counters differ from original simulation')
+
+    def test_fir_ram_original_case_row_unknown_fields_are_rejected(self):
+        p = self.root/'log/fir_ram/vsim.log'
+        self.put(p, p.read_text().replace('input_changes=512', 'input_changes=512 unreviewed=1', 1))
+        self.fir_ram['raw_logs_sha256']['log/fir_ram/vsim.log'] = gate.sha(p)
+        self.save_fir_ram_result();self.rejected('Unknown FIR RAM original case row')
+
+    def test_fir_ram_total_check_count_cannot_be_asserted(self):
+        self.fir_ram['checks'] += 1
+        self.save_fir_ram_result();self.rejected('total checks differ from actual cases')
+
+    def test_fir_ram_six_configurations_cannot_be_omitted(self):
+        self.fir_ram['cases'].pop()
+        self.save_fir_ram_result(rewrite_logs=True);self.rejected('six unique actual RAM cases')
+
+    def test_fir_ram_single_group_configuration_cannot_be_replaced(self):
+        self.fir_ram['cases'][2]['groups'] = 8
+        self.save_fir_ram_result(rewrite_logs=True);self.rejected('actual configuration mismatch')
+
+    def test_fir_ram_actual_ram_activity_is_required(self):
+        self.fir_ram['cases'][0]['reads'] = 0
+        self.save_fir_ram_result(rewrite_logs=True);self.rejected('actual RAM/convolution coverage incomplete')
+
+    def test_fir_ram_directed_boundary_coverage_is_required(self):
+        original = dict(self.fir_ram['cases'][0])
+        for key, value in (('wraps',1), ('concurrent_rw',0), ('resets',3), ('commit_capture',0),
+                           ('writing_faults',0), ('busy_faults',0), ('input_changes',255), ('checks',1)):
+            self.fir_ram['cases'][0] = {**original, key: value}
+            self.save_fir_ram_result(rewrite_logs=True)
+            with self.subTest(key=key):self.rejected('actual RAM/convolution coverage incomplete')
+
+    def test_fir_ram_independent_reference_coverage_is_required(self):
+        self.fir_ram['coverage'].remove(gate.FIR_RAM_COVERAGE[-1])
+        self.save_fir_ram_result();self.rejected('independent RAM/reference coverage contract incomplete')
+
+    def test_fir_ram_models_and_tool_hashes_must_be_bound(self):
+        key = next(iter(self.fir_ram['tools_sha256']))
+        self.fir_ram['tools_sha256'][key] = '0'*64
+        self.save_fir_ram_result();self.rejected('ModelSim tool path/hash mismatch')
+
+    def test_fir_ram_tool_evidence_cannot_be_omitted(self):
+        del self.fir_ram['tools_sha256'][next(iter(self.fir_ram['tools_sha256']))]
+        self.save_fir_ram_result();self.rejected('Incomplete FIR RAM ModelSim tool evidence')
+
+    def test_fir_ram_library_configuration_hash_must_match(self):
+        self.write('log/fir_ram/modelsim.ini', '[Library]\nwork = another_library\n')
+        self.rejected('simulation library configuration path/hash mismatch')
+
+    def test_fir_ram_external_coefficient_change_during_audit_is_rejected(self):
+        original = self.helper_result
+        def change(script, arguments, output):
+            value = original(script, arguments, output)
+            self.write('lib/coeff/fir1_q30.hex', '00000002\n')
+            return value
+        self.helper_mock.side_effect = change
+        self.rejected('Artifact changed during release audit')
+
+    def test_fir_ram_cannot_claim_physical_timing_verification(self):
+        self.fir_ram['placement_routing_tested'] = True
+        self.save_fir_ram_result();self.rejected('unsupported physical or serial verification')
+
+    def test_uart_vendor_regression_result_must_be_bound_to_full_regression(self):
+        self.regression['steps']['vendor_uart']['evidence']['sha256']='0'*64
+        self.save_json();self.rejected('UART vendor result path/hash mismatch')
+
+    def test_uart_vendor_regression_result_cannot_be_optional(self):
+        (self.root/'log/vendor_uart/result.json').unlink()
+        self.rejected('Missing mandatory UART vendor regression result')
+
+    def test_uart_vendor_gate_and_final_ff_audit_cannot_be_asserted_or_omitted(self):
+        original=self.helper_result
+        for case in ('status','schema','hash','raw_hash','channels','ff_count','line_count','result_hash','corner','clock','bitset','merged'):
+            def change(script,arguments,output):
+                result=original(script,arguments,output)
+                if script.name=='check_uart_vendor.py':
+                    if case=='status':result['status']='FAIL'
+                    if case=='schema':result['schema']='invented'
+                    if case=='hash':result['checker_sha256']='0'*64
+                    if case=='raw_hash':result['evidence']['fast_netlist']['sha256']='0'*64
+                    if case=='channels':result['probe']['channels']=127
+                    if case=='ff_count':result['probe']['variable_ff_count']=6
+                    if case=='line_count':result['probe']['response_lines']=128
+                    if case=='result_hash':result['probe']['result_sha256']='0'*64
+                    if case=='corner':del result['corners']['fast']
+                    if case in ('clock','bitset','merged'):
+                        for corner in result['corners'].values():
+                            if case=='clock':corner['clock_input']='audio_clk'
+                            if case=='bitset':corner['bits'][6]['bit']=5
+                            if case=='merged':corner['bits'][6]['instance']='FF5'
+                return result
+            self.helper_mock.side_effect=change
+            with self.subTest(case=case),self.assertRaises(gate.ReleaseError):gate.audit(self.args,self.root)
+        self.helper_mock.side_effect=original
 
     def test_stale_sdf_rejected(self):
         path = self.build/'clock_audit/slow_sta.sdf'
@@ -597,6 +865,65 @@ Constraints with matching wildcard expressions:
                 self.put(self.rtr,original.replace(f'{launch} {capture} 0.150 0.000 0 7\n',''))
                 self.rejected('missing bounded UART CDC paths')
 
+    def test_audio_configuration_source_and_domain_coverage_are_explicit(self):
+        timing=gate.check_timing(self.rtr.read_text(),'Action report_timing: done')
+        result=gate.check_audio_config_cdc(self.root,self.fdc,timing)
+        self.assertEqual(result['payload_bits'],56)
+        self.assertEqual(result['routing_bound_ns'],7.5)
+        self.assertEqual(result['request_ack_sync_stages'],2)
+        self.assertEqual(result['alive_reset_release_stages'],2)
+        self.assertEqual(len(result['physical_coverage']),4)
+        self.assertEqual(len(result['source_sha256']),4)
+
+    def test_audio_configuration_cdc_source_drift_is_rejected(self):
+        timing=gate.check_timing(self.rtr.read_text(),'Action report_timing: done')
+        path=self.root/'rtl/diag/audio_config_cdc.sv'
+        original=path.read_text()
+        cases=[original.replace('[55:0] held','[54:0] held'),
+               original.replace('async_reg="true"','async_reg="false"'),
+               original.replace('request_sync<=request_meta','request_sync<=request_toggle'),
+               original.replace('ack_sync<=ack_meta','ack_sync<=acknowledge'),
+               original.replace('alive_sync<=alive_meta','alive_sync<=1'),
+               original.replace('else if(waiting)','else if(1\'b0)'),
+               original.replace('held<=desired','held<=accepted'),
+               original.replace('request_meta<=request_toggle;','request_meta<=request_toggle;held<=desired;')]
+        for text in cases:
+            with self.subTest(source=text):
+                self.put(path,text)
+                with self.assertRaises(gate.ReleaseError):
+                    gate.check_audio_config_cdc(self.root,self.fdc,timing)
+        self.put(path,original)
+        board=self.root/'rtl/diag/board_uart_diagnostics.sv'
+        self.put(board,board.read_text().replace('configuration(.ref_clk(ref_clk)','configuration(.ref_clk(raw125_clk)'))
+        with self.assertRaisesRegex(gate.ReleaseError,'supervisor/audio clocks'):
+            gate.check_audio_config_cdc(self.root,self.fdc,timing)
+
+    def test_audio_configuration_domain_bounds_cannot_be_removed_or_relaxed(self):
+        timing=gate.check_timing(self.rtr.read_text(),'Action report_timing: done')
+        bound='set_max_delay 7.500 -datapath_only -from [get_clocks sys27] -to [get_clocks audio122]'
+        cases=[self.fdc.replace(bound,bound.replace('7.500','8.138')),
+               self.fdc.replace(bound,''),self.fdc+bound+'\n',
+               self.fdc+'set_false_path -from [get_clocks sys27] -to [get_clocks audio122]\n',
+               self.fdc+'set_multicycle_path 2 -from [get_clocks sys27] -to [get_clocks audio122]\n',
+               self.fdc+'set_clock_groups -asynchronous -group [get_clocks sys27] -group [get_clocks audio122]\n']
+        for fdc in cases:
+            with self.subTest(fdc=fdc),self.assertRaises(gate.ReleaseError):
+                gate.check_audio_config_cdc(self.root,fdc,timing)
+
+    def test_audio_configuration_each_direction_requires_both_physical_corners(self):
+        original=gate.check_timing(self.rtr.read_text(),'Action report_timing: done')
+        for corner in ('Slow','Fast'):
+            for pair in (('sys27','audio122'),('audio122','sys27')):
+                for field,value in (('total_endpoints',0),('failing_endpoints',1),
+                                    ('worst_slack_ns',-.001),('worst_slack_ns',float('nan'))):
+                    with self.subTest(corner=corner,pair=pair,field=field,value=value):
+                        timing=json.loads(json.dumps(original))
+                        rows=timing['summaries']['Setup/'+corner]
+                        row=next(p for p in rows if tuple(p['clocks'])==pair)
+                        row[field]=value
+                        with self.assertRaises(gate.ReleaseError):
+                            gate.check_audio_config_cdc(self.root,self.fdc,timing)
+
     def test_uart_reference_functional_paths_required(self):
         original=self.rtr.read_text()
         self.put(self.rtr,original.replace('sys27 sys27 0.150 0.000 0 7\n',''))
@@ -743,7 +1070,7 @@ Constraints with matching wildcard expressions:
         self.base_pcf = self.build/'device_map'/f'{gate.TOP}_base.pcf'
         self.route_pcf = self.build/'device_map'/f'{gate.TOP}.pcf'
         self.put(self.mapped, b'FIXTURE_NOT_A_MAPPED_DATABASE')
-        base = ''.join('def_port {'+p+'} LOC='+v['LOC']+' VCCIO='+v['VCCIO']+' IOSTANDARD='+v['STANDARD']+'\n'
+        base = ''.join('def_port {'+p+'} LOC='+v['LOC']+' VCCIO='+v['VCCIO']+' IOSTANDARD='+v['STANDARD']+(' DRIVE=8 SLEW=FAST' if p.startswith('i2s_') else '')+'\n'
                        for p,v in gate.pins_from_fdc(self.pin_fdc).items())
         self.put(self.base_pcf, base)
         source = self.root/'fpga/constraints/frontend_floorplan.pcf'
@@ -851,6 +1178,331 @@ Constraints with matching wildcard expressions:
             'Executing : '+self.place_command+' successfully.\nExecuting : '+self.route_command+' successfully.')
         self.put(log,text.replace('MEMS_PANGO_PNR_COMPLETE','MEMS_PANGO_PLACE_COMPLETE\nMEMS_PANGO_PNR_COMPLETE'))
         self.save_json()
+
+    def auto_floorplan_fixture(self, iterations=1):
+        self.placed_iteration_fixture()
+        self.put(self.route_pcf, self.base_pcf.read_bytes())
+        self.manifest['implementation'] = {'frontend_floorplan_mode':'auto', 'floorplan':None,
+            'router_threads':5, 'placement_seed':2, 'placement_decongestion':5,
+            'placement_initial_method':'Center', 'pnr_timeout_minutes':180,
+            'route_constraint_iteration':{'enabled':True, 'maximum':iterations,
+                                        'target_slack_ns':0.050, 'max_paths':8}}
+        self.manifest['postmap_constraints'].update(frontend_floorplan_mode='auto', template_applied=False,
+            route_pcf_sha256=gate.sha(self.route_pcf))
+        options = (' -mode performance -max_ctrl_chain_length 8 -number_of_router_thread 5'
+            ' -fix_hold_violation_in_route TRUE -fix_hold_violation_threshold_for_clock_path_cross_srb 20'
+            ' -fix_hold_violation_threshold_for_clk_tree 20 -max_hold_violated_paths_num 50000'
+            ' -dump_router_congestion_plot TRUE -action_timeout 180 -gplace_seed 2'
+            ' -plc_decongestion 5 -plc_initial_method Center')
+        old_place, old_route = self.place_command, self.route_command
+        self.place_command = 'pnr'+options+' -place_only -force_to_run -input_db_file {'+self.mapped.as_posix()+'}'
+        repair = (' -enable_route_constraint_iterate -route_constraint_iterate_times '+str(iterations)+
+                  ' -route_constraint_slack 0.050 -route_constraint_max_timing_path 8')
+        self.route_command = 'pnr'+options+repair+' -force_to_run -input_db_file {'+self.placed.as_posix()+'}'
+        for index, filename, old, new in ((1,'place.tcl',old_place,self.place_command),
+                                         (2,'route.tcl',old_route,self.route_command)):
+            path = self.build/filename
+            self.put(path, path.read_text().replace(old,new))
+            self.manifest['flow_evidence'][index]['script_sha256'] = gate.sha(path)
+        log = self.build/'build.log'
+        text = log.read_text().replace(old_place,self.place_command).replace(old_route,self.route_command)
+        text = '\n'.join(line for line in text.splitlines() if not line.startswith('Executing : def_inst_site '))+'\n'
+        # The recovered prefix must end after the native placement completion,
+        # so model the real stage/marker order rather than queued end markers.
+        lines=[]
+        for line in text.splitlines():
+            if line.startswith('MEMS_PANGO_'):
+                continue
+            if line == 'Executing : '+self.route_command+' successfully.':
+                lines.extend(('I: Current iteration time: 1','Route thread size: 5'))
+            lines.append(line)
+            match=re.fullmatch(r'Executing : ('+'|'.join(gate.STAGES)+r')((?: [^\r\n]*)?) successfully\.',line)
+            if match:
+                stage='place' if match[1]=='pnr' and re.search(r'\s-place_only(?:\s|$)',match[2]) else match[1]
+                lines.append('MEMS_PANGO_'+stage.upper()+'_COMPLETE')
+        text='\n'.join(lines)+'\n'
+        self.put(log,text)
+        self.save_json()
+
+    def test_auto_floorplan_single_route_release(self):
+        self.auto_floorplan_fixture()
+        self.assertTrue(gate.audit(self.args,self.root)['release_authorized'])
+
+    def test_auto_floorplan_two_route_recipe_release(self):
+        self.auto_floorplan_fixture(iterations=2)
+        self.assertTrue(gate.audit(self.args,self.root)['release_authorized'])
+
+    def test_single_route_requires_constraint_entry_enabled(self):
+        self.auto_floorplan_fixture()
+        self.manifest['implementation']['route_constraint_iteration']['enabled']=False
+        self.save_json();self.rejected('Invalid single/two-route')
+
+    def test_single_route_requires_native_constraint_entry(self):
+        self.auto_floorplan_fixture()
+        path=self.build/'build.log'
+        self.put(path,path.read_text().replace(' -enable_route_constraint_iterate',''))
+        self.rejected('Unexpected optional route-constraint iteration')
+
+    def test_single_route_requires_exact_native_iteration_limit(self):
+        self.auto_floorplan_fixture()
+        path=self.build/'build.log'
+        self.put(path,path.read_text().replace('-route_constraint_iterate_times 1','-route_constraint_iterate_times 2'))
+        self.rejected('Unexpected route-constraint iteration option')
+
+    def test_auto_floorplan_does_not_accept_fixed_template(self):
+        self.auto_floorplan_fixture()
+        self.put(self.route_pcf,self.base_pcf.read_bytes()+b'\n'+(self.root/'fpga/constraints/frontend_floorplan.pcf').read_bytes())
+        self.manifest['postmap_constraints']['route_pcf_sha256']=gate.sha(self.route_pcf)
+        self.save_json();self.rejected('exact generated base')
+
+    def test_auto_floorplan_rejects_native_fixed_site(self):
+        self.auto_floorplan_fixture()
+        log=self.build/'build.log'
+        self.put(log,log.read_text()+'Executing : def_inst_site {cell} APM_0_0 XAPM_CORE_U successfully.\n')
+        self.rejected('log applies fixed macro')
+
+    def test_auto_floorplan_rejects_hidden_template_script(self):
+        self.auto_floorplan_fixture()
+        path=self.build/'route.tcl'
+        self.put(path,'add_constraint {'+(self.root/'fpga/constraints/frontend_floorplan.pcf').as_posix()+'}\n'+path.read_text())
+        self.manifest['flow_evidence'][2]['script_sha256']=gate.sha(path)
+        self.save_json();self.rejected('scripts must not apply')
+
+    def test_auto_floorplan_keeps_base_port_command_gate(self):
+        self.auto_floorplan_fixture()
+        self.put(self.base_pcf,self.base_pcf.read_bytes()+b'set_false_path -from all -to all\n')
+        self.put(self.route_pcf,self.base_pcf.read_bytes())
+        self.manifest['postmap_constraints'].update(base_pcf_sha256=gate.sha(self.base_pcf),route_pcf_sha256=gate.sha(self.route_pcf))
+        self.save_json();self.rejected('Unexpected command/duplicate port')
+
+    def test_auto_floorplan_requires_placement_provenance(self):
+        self.auto_floorplan_fixture()
+        del self.manifest['postplace_link']
+        self.save_json();self.rejected('required stages completed once in order')
+
+    def test_auto_floorplan_rejects_false_application_claim(self):
+        self.auto_floorplan_fixture()
+        self.manifest['postmap_constraints']['template_applied']=True
+        self.save_json();self.rejected('mode/application differs')
+
+    def test_auto_floorplan_rejects_wrong_thread_recipe(self):
+        self.auto_floorplan_fixture()
+        self.manifest['implementation']['router_threads']=6
+        self.save_json();self.rejected('five router threads')
+
+    def test_auto_floorplan_rejects_native_thread_mismatch(self):
+        self.auto_floorplan_fixture()
+        log=self.build/'build.log'
+        self.put(log,log.read_text().replace(self.route_command,self.route_command.replace('-number_of_router_thread 5','-number_of_router_thread 4')))
+        self.rejected('recipe option differs')
+
+    def test_auto_floorplan_requires_native_thread_evidence(self):
+        self.auto_floorplan_fixture()
+        log=self.build/'build.log'
+        self.put(log,log.read_text().replace('Route thread size: 5\n',''))
+        self.rejected('native five-thread')
+
+    def test_single_route_rejects_second_actual_iteration(self):
+        self.auto_floorplan_fixture()
+        log=self.build/'build.log'
+        self.put(log,log.read_text().replace('MEMS_PANGO_PNR_COMPLETE','I: Current iteration time: 2\nMEMS_PANGO_PNR_COMPLETE'))
+        self.rejected('iteration count exceeds')
+
+    def test_single_route_rejects_second_placement(self):
+        self.auto_floorplan_fixture()
+        log=self.build/'build.log'
+        self.put(log,log.read_text().replace('MEMS_PANGO_PNR_COMPLETE','Worst slack after global placement is 100\nMEMS_PANGO_PNR_COMPLETE'))
+        self.rejected('another placement')
+
+    def test_auto_floorplan_keeps_strict_timing_gate(self):
+        self.auto_floorplan_fixture()
+        self.put(self.rtr,self.timing_report().replace('All Constraints Met.','Constraints Violated.'))
+        self.rejected('violated constraints')
+
+    def test_fir_ram_eight_lane_configuration_is_bound(self):
+        self.fir_ram['cases'][4]['lanes']=16
+        self.save_fir_ram_result(rewrite_logs=True);self.rejected('actual configuration mismatch')
+
+    def route_entry_recovery_fixture(self, iterations=1):
+        """Synthetic byte-binding fixtures; no recovered physical route is asserted."""
+        self.auto_floorplan_fixture(iterations)
+        self.recovery_archive=self.build/'resume_before_route'
+        old_recipe=(self.root/'fpga/scripts/build.py').read_bytes()
+        for flow in self.manifest['flow_evidence'][:2]:
+            flow['completed_at']=(self.now-timedelta(seconds=2)).isoformat()
+        old_source=dict(self.manifest['source_sha256'])
+        old_route=(self.build/'route.tcl').read_text().replace(
+            ' -enable_route_constraint_iterate -route_constraint_iterate_times '+str(iterations)+
+            ' -route_constraint_slack 0.050 -route_constraint_max_timing_path 8','')
+        failed_command=self.route_command.replace(
+            ' -enable_route_constraint_iterate -route_constraint_iterate_times '+str(iterations)+
+            ' -route_constraint_slack 0.050 -route_constraint_max_timing_path 8','')
+        self.failed_route_command=failed_command
+        raw=(self.build/'build.log').read_bytes()
+        retained=re.search(rb'(?m)^MEMS_PANGO_PLACE_COMPLETE\r?\n',raw).end()
+        self.recovery_prefix=raw[:retained]
+        failed=self.recovery_prefix+(
+            'Executing : '+failed_command+'\nProcess "Place & Route" started.\n'+
+            "E: Flow-0013: The input DB '"+self.placed.as_posix()+"' should be of phase 'DEVMAP'.\n"+
+            'Program Error Out.\nE: Failed to execute the script : \n').encode()
+        previous=json.loads(json.dumps(self.manifest))
+        previous.update(status='FAIL',exit_code=1,source_sha256=old_source,
+            completed_at=(self.now-timedelta(seconds=1)).isoformat(),
+            flow_evidence=self.manifest['flow_evidence'][:2])
+        previous['implementation']['route_constraint_iteration'].update(enabled=False,maximum=1)
+        for name,content in [('build.log',failed),('manifest.json',json.dumps(previous)),
+                             ('route.tcl',old_route),('build.py',old_recipe)]:
+            self.put(self.recovery_archive/name,content)
+        self.put(self.build/'place_route'/f'{gate.TOP}_plc.adf',self.placed.read_bytes())
+        self.write('fpga/scripts/build.py','# Fixture corrected PLC entry; not an executed builder\n')
+        self.manifest['source_sha256']=gate.current_build_sources(self.root)
+        self.manifest['route_entry_recovery']=dict(
+            archive_dir=self.recovery_archive.relative_to(self.root).as_posix(),
+            previous_build_log_sha256=gate.sha(self.recovery_archive/'build.log'),
+            previous_manifest_sha256=gate.sha(self.recovery_archive/'manifest.json'),
+            previous_route_script_sha256=gate.sha(self.recovery_archive/'route.tcl'),
+            previous_build_recipe_sha256=gate.sha(self.recovery_archive/'build.py'),
+            retained_log_bytes=retained,retained_log_sha256=hashlib.sha256(self.recovery_prefix).hexdigest(),
+            recovered_at=self.now.isoformat())
+        self.save_json()
+
+    def update_recovery_archive(self, filename, mutate):
+        path=self.recovery_archive/filename
+        value=json.loads(path.read_text()) if filename=='manifest.json' else path.read_text()
+        changed=mutate(value)
+        self.put(path,json.dumps(value) if filename=='manifest.json' else changed)
+        field={'manifest.json':'manifest','build.log':'build_log','route.tcl':'route_script','build.py':'build_recipe'}[filename]
+        self.manifest['route_entry_recovery']['previous_'+field+'_sha256']=gate.sha(path)
+        self.save_json()
+
+    def test_route_entry_recovery_releases_only_after_real_stages(self):
+        self.route_entry_recovery_fixture()
+        result=gate.audit(self.args,self.root)
+        self.assertTrue(result['release_authorized'])
+        self.assertEqual(result['route_entry_recovery']['archived_failure_status'],'FAIL')
+        self.assertEqual(result['route_entry_recovery']['same_placed_db_sha256'],gate.sha(self.placed))
+
+    def test_route_entry_recovery_two_iteration_bound_remains_explicit(self):
+        self.route_entry_recovery_fixture(iterations=2)
+        self.assertTrue(gate.audit(self.args,self.root)['release_authorized'])
+
+    def test_route_entry_recovery_old_log_tamper_rejected(self):
+        self.route_entry_recovery_fixture()
+        path=self.recovery_archive/'build.log';self.put(path,path.read_bytes()+b'\n')
+        self.rejected('archived identity mismatch: build_log')
+
+    def test_route_entry_recovery_old_manifest_tamper_rejected(self):
+        self.route_entry_recovery_fixture()
+        path=self.recovery_archive/'manifest.json';self.put(path,path.read_bytes()+b' ')
+        self.rejected('archived identity mismatch: manifest')
+
+    def test_route_entry_recovery_old_route_script_tamper_rejected(self):
+        self.route_entry_recovery_fixture()
+        path=self.recovery_archive/'route.tcl';self.put(path,path.read_bytes()+b'# edited\n')
+        self.rejected('archived identity mismatch: route_script')
+
+    def test_route_entry_recovery_old_recipe_tamper_rejected(self):
+        self.route_entry_recovery_fixture()
+        path=self.recovery_archive/'build.py';self.put(path,path.read_bytes()+b'# edited\n')
+        self.rejected('archived identity mismatch: build_recipe')
+
+    def test_route_entry_recovery_other_archive_directory_rejected(self):
+        self.route_entry_recovery_fixture()
+        self.manifest['route_entry_recovery']['archive_dir']='fpga/build/OTHER/resume_before_route'
+        self.save_json();self.rejected('archive must belong to this build')
+
+    def test_route_entry_recovery_original_pass_cannot_replace_failure(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('manifest.json',lambda value:value.update(status='PASS',exit_code=0))
+        self.rejected('failed full-build manifest')
+
+    def test_route_entry_recovery_cannot_change_rtl_source(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('manifest.json',lambda value:value['source_sha256'].update({'rtl/top.sv':'different'}))
+        self.rejected('may change only the build recipe source')
+
+    def test_route_entry_recovery_old_recipe_must_match_source(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('build.py',lambda value:value+'# Rebound edited old builder\n')
+        self.rejected('build recipe source binding mismatch')
+
+    def test_route_entry_recovery_placement_parameters_unchanged(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('manifest.json',lambda value:value['implementation'].update(placement_seed=3))
+        self.rejected('changed placement or routing parameters')
+
+    def test_route_entry_recovery_completed_flow_identity_unchanged(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('manifest.json',lambda value:value['flow_evidence'][1].update(script_sha256='different'))
+        self.rejected('changed completed compile/map/place evidence')
+
+    def test_route_entry_recovery_postmap_constraints_unchanged(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('manifest.json',lambda value:value['postmap_constraints'].update(route_pcf_sha256='different'))
+        self.rejected('changed map/PCF/placement linkage')
+
+    def test_route_entry_recovery_original_plc_matches_retained_input(self):
+        self.route_entry_recovery_fixture()
+        self.put(self.build/'place_route'/f'{gate.TOP}_plc.adf',b'Another placed database')
+        self.rejected('same completed PLC database')
+
+    def test_route_entry_recovery_exact_prefix_length_required(self):
+        self.route_entry_recovery_fixture()
+        self.manifest['route_entry_recovery']['retained_log_bytes']-=1
+        self.save_json();self.rejected('exactly the completed-placement byte prefix')
+
+    def test_route_entry_recovery_prefix_digest_must_match(self):
+        self.route_entry_recovery_fixture()
+        self.manifest['route_entry_recovery']['retained_log_sha256']='different'
+        self.save_json();self.rejected('retained log prefix identity mismatch')
+
+    def test_route_entry_recovery_active_log_preserves_prefix_bytes(self):
+        self.route_entry_recovery_fixture()
+        path=self.build/'build.log';self.put(path,b'# rewritten\n'+path.read_bytes())
+        self.rejected('retained log prefix identity mismatch')
+
+    def test_route_entry_recovery_requires_specific_failure(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('build.log',lambda value:value.replace('Flow-0013','Flow-0189'))
+        self.rejected('specific pre-routing PLC/DEVMAP failure')
+
+    def test_route_entry_recovery_failure_must_name_same_plc(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('build.log',lambda value:value.replace("input DB '"+self.placed.as_posix(),"input DB '"+self.mapped.as_posix()))
+        self.rejected('specific pre-routing PLC/DEVMAP failure')
+
+    def test_route_entry_recovery_cannot_hide_started_routing(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('build.log',lambda value:value+'I: Current iteration time: 1\nRouting started.\n')
+        self.rejected('another error or started/completed routing')
+
+    def test_route_entry_recovery_cannot_hide_additional_failure(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('build.log',lambda value:value+'E: Flow-0189: Task terminated\n')
+        self.rejected('another error or started/completed routing')
+
+    def test_route_entry_recovery_attempted_command_is_bound(self):
+        self.route_entry_recovery_fixture()
+        self.update_recovery_archive('build.log',lambda value:value.replace(
+            'Executing : '+self.failed_route_command,
+            'Executing : '+self.failed_route_command.replace('-gplace_seed 2','-gplace_seed 3')))
+        self.rejected('original route command was not actually attempted')
+
+    def test_route_entry_recovery_timestamps_do_not_precede_failure(self):
+        self.route_entry_recovery_fixture()
+        self.manifest['route_entry_recovery']['recovered_at']=self.start.isoformat()
+        self.save_json();self.rejected('timestamps are invalid')
+
+    def test_route_entry_recovery_keeps_timing_rejection(self):
+        self.route_entry_recovery_fixture()
+        self.put(self.rtr,self.timing_report().replace('All Constraints Met.','Constraints Violated.'))
+        self.rejected('violated constraints')
+
+    def test_route_entry_recovery_requires_actual_completed_route(self):
+        self.route_entry_recovery_fixture()
+        path=self.build/'build.log'
+        self.put(path,path.read_text().replace('Executing : '+self.route_command+' successfully.\n',''))
+        self.rejected('native successful stage completions')
 
     def test_placed_iteration_release(self):
         self.placed_iteration_fixture()
