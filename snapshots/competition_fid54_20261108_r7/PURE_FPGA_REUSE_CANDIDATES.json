@@ -1,0 +1,291 @@
+{
+  "status": "26-file static reuse shortlist; independent top not yet elaborated or verified",
+  "files": [
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/pdm_capture.sv",
+      "bytes": 2253,
+      "sha256": "64e27675c9a955a8c2e4269f7c717708bfb1bc9945ad57598e07ed3499f0c87a",
+      "baseline_sha256": "64e27675c9a955a8c2e4269f7c717708bfb1bc9945ad57598e07ed3499f0c87a",
+      "baseline_bytes": 2253,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/cic_decimator.sv",
+      "bytes": 5454,
+      "sha256": "58d634b3a20f2865dac9435b66cb248427476682266036a51711776ac5cd8451",
+      "baseline_sha256": "58d634b3a20f2865dac9435b66cb248427476682266036a51711776ac5cd8451",
+      "baseline_bytes": 5454,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/fir_decimator.sv",
+      "bytes": 13004,
+      "sha256": "3164b358cf78b127d001533e0106848f4708c152c4100a6541f7f31802faf528",
+      "baseline_sha256": "3164b358cf78b127d001533e0106848f4708c152c4100a6541f7f31802faf528",
+      "baseline_bytes": 13004,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/pcm_parity_compensation.sv",
+      "bytes": 14877,
+      "sha256": "a835ea11424fd7b129048f3146e7f1cb503516bb8e347ee9034c1decb6bca3c0",
+      "baseline_sha256": "a835ea11424fd7b129048f3146e7f1cb503516bb8e347ee9034c1decb6bca3c0",
+      "baseline_bytes": 14877,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/pcm_calibration.sv",
+      "bytes": 3574,
+      "sha256": "6ffe0bd5c95eb1f76d3f93e4ad0f2871c3ba514fa0b94d59744d9f1c774cb0c8",
+      "baseline_sha256": "6ffe0bd5c95eb1f76d3f93e4ad0f2871c3ba514fa0b94d59744d9f1c774cb0c8",
+      "baseline_bytes": 3574,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/pcm_frame_fifo.sv",
+      "bytes": 2633,
+      "sha256": "33b116a643c3063d62a0380fc19aca1fcc5ddf91bbf695bebe0d9a6f1692f9ae",
+      "baseline_sha256": "33b116a643c3063d62a0380fc19aca1fcc5ddf91bbf695bebe0d9a6f1692f9ae",
+      "baseline_bytes": 2633,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/mems_array_top.sv",
+      "bytes": 4987,
+      "sha256": "4171de61cfa11120080c654d855ca5e94d8a274ce6f704c0c9c2d38523a82165",
+      "baseline_sha256": "4171de61cfa11120080c654d855ca5e94d8a274ce6f704c0c9c2d38523a82165",
+      "baseline_bytes": 4987,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/async_sample_fifo.sv",
+      "bytes": 2303,
+      "sha256": "f439ae1b8808951f747bf43e021f6a8559ae59a384e7b6908b000f68088e842d",
+      "baseline_sha256": "f439ae1b8808951f747bf43e021f6a8559ae59a384e7b6908b000f68088e842d",
+      "baseline_bytes": 2303,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/reset_release.sv",
+      "bytes": 395,
+      "sha256": "578efbf1836d89f18dbb3a070fcfb4dd879e702943cd6055303ef7297e74f3fd",
+      "baseline_sha256": "578efbf1836d89f18dbb3a070fcfb4dd879e702943cd6055303ef7297e74f3fd",
+      "baseline_bytes": 395,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/diag/diag_snapshot_cdc.sv",
+      "bytes": 1923,
+      "sha256": "730a287c5dfa28b3f1a964f140fe93893bbbda18500703ba93f68e9a1022624a",
+      "baseline_sha256": "730a287c5dfa28b3f1a964f140fe93893bbbda18500703ba93f68e9a1022624a",
+      "baseline_bytes": 1923,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/board/pango_board_clocks.v",
+      "bytes": 5358,
+      "sha256": "590f74c8d3979d46846580d89a40633ea38da309aef9de3d938cec9c9affbdf6",
+      "baseline_sha256": "590f74c8d3979d46846580d89a40633ea38da309aef9de3d938cec9c9affbdf6",
+      "baseline_bytes": 5358,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/array128_pcm_cdc_reorder.sv",
+      "bytes": 3718,
+      "sha256": "861c1c0022e16ecf824ab81c798c6ba3555719ee3f7f7a2800ebf02620e36ad5",
+      "baseline_sha256": "861c1c0022e16ecf824ab81c798c6ba3555719ee3f7f7a2800ebf02620e36ad5",
+      "baseline_bytes": 3718,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/clockbank8/rtl/array128_full_frontend.sv",
+      "bytes": 4460,
+      "sha256": "719780d10123651ce38ae1b4b7b00bb6028f5f496988bdd53a5d6724aa88d949",
+      "baseline_sha256": "719780d10123651ce38ae1b4b7b00bb6028f5f496988bdd53a5d6724aa88d949",
+      "baseline_bytes": 4460,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/board/meeting_audio_clocks.sv",
+      "bytes": 3148,
+      "sha256": "e8fdf0be3833de62ed6f4e105819acea896ebf182e7e816d2e5acb2aaba1054f",
+      "baseline_sha256": "e8fdf0be3833de62ed6f4e105819acea896ebf182e7e816d2e5acb2aaba1054f",
+      "baseline_bytes": 3148,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/board/meeting_soc_mini200.sv",
+      "bytes": 3715,
+      "sha256": "33bcf0b727b30e9abc119bd44005612523fb098d57e5c6d3c7a9092599945edc",
+      "baseline_sha256": "33bcf0b727b30e9abc119bd44005612523fb098d57e5c6d3c7a9092599945edc",
+      "baseline_bytes": 3715,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/video/meeting_video_clocks.sv",
+      "bytes": 790,
+      "sha256": "1d1c1bdc378ff78830aa73c1b8f7106789131c41e9867462127e665d568729cd",
+      "baseline_sha256": "1d1c1bdc378ff78830aa73c1b8f7106789131c41e9867462127e665d568729cd",
+      "baseline_bytes": 790,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/board/pango_rgmii_io.v",
+      "bytes": 4703,
+      "sha256": "e9aa43f422d938b0647784842bf9520034b0018f726c570cafdb80a54a057c20",
+      "baseline_sha256": "e9aa43f422d938b0647784842bf9520034b0018f726c570cafdb80a54a057c20",
+      "baseline_bytes": 4703,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/rtl8211f_manager.sv",
+      "bytes": 14907,
+      "sha256": "410fe7387f2e4ce324a69ac71cb414327f2f70d8338041f63454083f6ea742d3",
+      "baseline_sha256": "410fe7387f2e4ce324a69ac71cb414327f2f70d8338041f63454083f6ea742d3",
+      "baseline_bytes": 14907,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/mdio_clause22.sv",
+      "bytes": 4479,
+      "sha256": "3cf2e46b9f96a90fd6ab8569a5ba450705a3c2241974ed39b799e95aa40ed770",
+      "baseline_sha256": "3cf2e46b9f96a90fd6ab8569a5ba450705a3c2241974ed39b799e95aa40ed770",
+      "baseline_bytes": 4479,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/mac_baseline/production/ethernet_udp_engine.sv",
+      "bytes": 21470,
+      "sha256": "9cd783539d62413620985ba153c0ad8a4b64ad04aeaf5a0d21b9072dd9ee6e4f",
+      "baseline_sha256": "9cd783539d62413620985ba153c0ad8a4b64ad04aeaf5a0d21b9072dd9ee6e4f",
+      "baseline_bytes": 21470,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/ethernet_arp_rx.sv",
+      "bytes": 6099,
+      "sha256": "fef5d3806c2657a6719d974ed7b6504d269dc59f1177a9c2cf0c76a094a1a562",
+      "baseline_sha256": "fef5d3806c2657a6719d974ed7b6504d269dc59f1177a9c2cf0c76a094a1a562",
+      "baseline_bytes": 6099,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/rtl/meeting_raw_pcm_transport.sv",
+      "bytes": 4947,
+      "sha256": "4769593ba476d083cc21e7e53bd78e0aac637eb3419e1001c11ed163a73ad5f0",
+      "baseline_sha256": "4769593ba476d083cc21e7e53bd78e0aac637eb3419e1001c11ed163a73ad5f0",
+      "baseline_bytes": 4947,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/rtl/meeting_raw_async_fifo.sv",
+      "bytes": 2356,
+      "sha256": "7516872fcb37bfd6e93f33646f15fd7005ab130cdad71dca0b6b638084acb780",
+      "baseline_sha256": "7516872fcb37bfd6e93f33646f15fd7005ab130cdad71dca0b6b638084acb780",
+      "baseline_bytes": 2356,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/rtl/pcm_udp_packetizer.sv",
+      "bytes": 7292,
+      "sha256": "9c8ec0ce1d4c6cdc5132a10ff99616c93ea7bf00bfa8777d0dfcbff2560e1455",
+      "baseline_sha256": "9c8ec0ce1d4c6cdc5132a10ff99616c93ea7bf00bfa8777d0dfcbff2560e1455",
+      "baseline_bytes": 7292,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/include/fir1_coeff.svh",
+      "bytes": 2825,
+      "sha256": "e4c1c05149524f523ffe87f5851f0dfcddb9d5934ecc2fcbba89acbe1f1304dc",
+      "baseline_sha256": "e4c1c05149524f523ffe87f5851f0dfcddb9d5934ecc2fcbba89acbe1f1304dc",
+      "baseline_bytes": 2825,
+      "roles": [
+        "recursive_include"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/include/fir2_coeff.svh",
+      "bytes": 5732,
+      "sha256": "8ff28ab11966f5187a33ba902672017cb1f89bcbf8b4108c5d1b6c6856295045",
+      "baseline_sha256": "8ff28ab11966f5187a33ba902672017cb1f89bcbf8b4108c5d1b6c6856295045",
+      "baseline_bytes": 5732,
+      "roles": [
+        "recursive_include"
+      ],
+      "changed_for_portability": false
+    }
+  ]
+}

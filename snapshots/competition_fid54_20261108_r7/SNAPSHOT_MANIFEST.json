@@ -1,0 +1,2319 @@
+{
+  "schema": "competition_fpga_source_snapshot_v1",
+  "created_utc": "2026-11-09T09:57:01.935941+00:00",
+  "baseline_sourcepack_sha256": "0ec7f2775cb866755aaa5179f088af6373172b70a3969b60761d09bcebf8dc07",
+  "upstream_base_commit": "5b9d97be1a9a200c37e40e1ff7ccc96e775acf5d",
+  "direct_sources": 105,
+  "active_idf_child_sources": 79,
+  "recursive_include_dependencies": 5,
+  "copied_source_constraint_files": 195,
+  "files": [
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/pdm_capture.sv",
+      "bytes": 2253,
+      "sha256": "64e27675c9a955a8c2e4269f7c717708bfb1bc9945ad57598e07ed3499f0c87a",
+      "baseline_sha256": "64e27675c9a955a8c2e4269f7c717708bfb1bc9945ad57598e07ed3499f0c87a",
+      "baseline_bytes": 2253,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/cic_decimator.sv",
+      "bytes": 5454,
+      "sha256": "58d634b3a20f2865dac9435b66cb248427476682266036a51711776ac5cd8451",
+      "baseline_sha256": "58d634b3a20f2865dac9435b66cb248427476682266036a51711776ac5cd8451",
+      "baseline_bytes": 5454,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/fir_decimator.sv",
+      "bytes": 13004,
+      "sha256": "3164b358cf78b127d001533e0106848f4708c152c4100a6541f7f31802faf528",
+      "baseline_sha256": "3164b358cf78b127d001533e0106848f4708c152c4100a6541f7f31802faf528",
+      "baseline_bytes": 13004,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/pcm_parity_compensation.sv",
+      "bytes": 14877,
+      "sha256": "a835ea11424fd7b129048f3146e7f1cb503516bb8e347ee9034c1decb6bca3c0",
+      "baseline_sha256": "a835ea11424fd7b129048f3146e7f1cb503516bb8e347ee9034c1decb6bca3c0",
+      "baseline_bytes": 14877,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/pcm_calibration.sv",
+      "bytes": 3574,
+      "sha256": "6ffe0bd5c95eb1f76d3f93e4ad0f2871c3ba514fa0b94d59744d9f1c774cb0c8",
+      "baseline_sha256": "6ffe0bd5c95eb1f76d3f93e4ad0f2871c3ba514fa0b94d59744d9f1c774cb0c8",
+      "baseline_bytes": 3574,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/pcm_frame_fifo.sv",
+      "bytes": 2633,
+      "sha256": "33b116a643c3063d62a0380fc19aca1fcc5ddf91bbf695bebe0d9a6f1692f9ae",
+      "baseline_sha256": "33b116a643c3063d62a0380fc19aca1fcc5ddf91bbf695bebe0d9a6f1692f9ae",
+      "baseline_bytes": 2633,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/mems_array_top.sv",
+      "bytes": 4987,
+      "sha256": "4171de61cfa11120080c654d855ca5e94d8a274ce6f704c0c9c2d38523a82165",
+      "baseline_sha256": "4171de61cfa11120080c654d855ca5e94d8a274ce6f704c0c9c2d38523a82165",
+      "baseline_bytes": 4987,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/async_sample_fifo.sv",
+      "bytes": 2303,
+      "sha256": "f439ae1b8808951f747bf43e021f6a8559ae59a384e7b6908b000f68088e842d",
+      "baseline_sha256": "f439ae1b8808951f747bf43e021f6a8559ae59a384e7b6908b000f68088e842d",
+      "baseline_bytes": 2303,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/reset_release.sv",
+      "bytes": 395,
+      "sha256": "578efbf1836d89f18dbb3a070fcfb4dd879e702943cd6055303ef7297e74f3fd",
+      "baseline_sha256": "578efbf1836d89f18dbb3a070fcfb4dd879e702943cd6055303ef7297e74f3fd",
+      "baseline_bytes": 395,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/diag/diag_snapshot_cdc.sv",
+      "bytes": 1923,
+      "sha256": "730a287c5dfa28b3f1a964f140fe93893bbbda18500703ba93f68e9a1022624a",
+      "baseline_sha256": "730a287c5dfa28b3f1a964f140fe93893bbbda18500703ba93f68e9a1022624a",
+      "baseline_bytes": 1923,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/diag/uart_8n1.sv",
+      "bytes": 2223,
+      "sha256": "9f1e5f8f22575f4c2c35e5b249441b6fabf1c3e79fc6b1dd424205a63baad38f",
+      "baseline_sha256": "9f1e5f8f22575f4c2c35e5b249441b6fabf1c3e79fc6b1dd424205a63baad38f",
+      "baseline_bytes": 2223,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/board/pango_board_clocks.v",
+      "bytes": 5358,
+      "sha256": "590f74c8d3979d46846580d89a40633ea38da309aef9de3d938cec9c9affbdf6",
+      "baseline_sha256": "590f74c8d3979d46846580d89a40633ea38da309aef9de3d938cec9c9affbdf6",
+      "baseline_bytes": 5358,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/array128_pcm_cdc_reorder.sv",
+      "bytes": 3718,
+      "sha256": "861c1c0022e16ecf824ab81c798c6ba3555719ee3f7f7a2800ebf02620e36ad5",
+      "baseline_sha256": "861c1c0022e16ecf824ab81c798c6ba3555719ee3f7f7a2800ebf02620e36ad5",
+      "baseline_bytes": 3718,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/clockbank8/rtl/array128_full_frontend.sv",
+      "bytes": 4460,
+      "sha256": "719780d10123651ce38ae1b4b7b00bb6028f5f496988bdd53a5d6724aa88d949",
+      "baseline_sha256": "719780d10123651ce38ae1b4b7b00bb6028f5f496988bdd53a5d6724aa88d949",
+      "baseline_bytes": 4460,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/board/meeting_audio_clocks.sv",
+      "bytes": 3148,
+      "sha256": "e8fdf0be3833de62ed6f4e105819acea896ebf182e7e816d2e5acb2aaba1054f",
+      "baseline_sha256": "e8fdf0be3833de62ed6f4e105819acea896ebf182e7e816d2e5acb2aaba1054f",
+      "baseline_bytes": 3148,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/board/meeting_soc_mini200.sv",
+      "bytes": 3715,
+      "sha256": "33bcf0b727b30e9abc119bd44005612523fb098d57e5c6d3c7a9092599945edc",
+      "baseline_sha256": "33bcf0b727b30e9abc119bd44005612523fb098d57e5c6d3c7a9092599945edc",
+      "baseline_bytes": 3715,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/rv32_array128_cached_soc.v",
+      "bytes": 13233,
+      "sha256": "eda6305ef4e367fafb125847d866db37f4f31ae8edeeec428896fa681fadfc09",
+      "baseline_sha256": "eda6305ef4e367fafb125847d866db37f4f31ae8edeeec428896fa681fadfc09",
+      "baseline_bytes": 13233,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/array128_audio_mmio.sv",
+      "bytes": 5709,
+      "sha256": "b67643083f5646e2825dac3c0bfb3c5a9b007af361f43c74798d39161d44f1f6",
+      "baseline_sha256": "b67643083f5646e2825dac3c0bfb3c5a9b007af361f43c74798d39161d44f1f6",
+      "baseline_bytes": 5709,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/array128_pcm_snapshot_mmio.sv",
+      "bytes": 5815,
+      "sha256": "a93a279614e582db7fd3cbdb62943950f5c8eeb028929dfdc767804ed400d9da",
+      "baseline_sha256": "a93a279614e582db7fd3cbdb62943950f5c8eeb028929dfdc767804ed400d9da",
+      "baseline_bytes": 5815,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/array128_mono_stream_mmio.sv",
+      "bytes": 9650,
+      "sha256": "bd51b8f23a9b644dd9f4d74b9b10e84b6bad4a1b533a76c76bda0b818d1415e8",
+      "baseline_sha256": "bd51b8f23a9b644dd9f4d74b9b10e84b6bad4a1b533a76c76bda0b818d1415e8",
+      "baseline_bytes": 9650,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/array128_full_control_soc.sv",
+      "bytes": 12180,
+      "sha256": "157e4be3462de2a1ad4438ca8fef0861c8125d3fba0973e57c2c332459614717",
+      "baseline_sha256": "157e4be3462de2a1ad4438ca8fef0861c8125d3fba0973e57c2c332459614717",
+      "baseline_bytes": 12180,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/meeting_mono_fir.sv",
+      "bytes": 8690,
+      "sha256": "861ce1abe2da7a62e8729ea0922d69386632095fa680e2963513804910b1e5ac",
+      "baseline_sha256": "861ce1abe2da7a62e8729ea0922d69386632095fa680e2963513804910b1e5ac",
+      "baseline_bytes": 8690,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/meeting_pair_rom.sv",
+      "bytes": 3248,
+      "sha256": "b71f9f09d144888299d35be06ce17c1498a1af4fa4b7d4739660b1e1917e61f3",
+      "baseline_sha256": "b71f9f09d144888299d35be06ce17c1498a1af4fa4b7d4739660b1e1917e61f3",
+      "baseline_bytes": 3248,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/meeting_tdoa.sv",
+      "bytes": 6863,
+      "sha256": "8932fabb03dc9ecacec48c9fa427f48d0b5133ccfb25692bcb8c4ee0474f6afd",
+      "baseline_sha256": "8932fabb03dc9ecacec48c9fa427f48d0b5133ccfb25692bcb8c4ee0474f6afd",
+      "baseline_bytes": 6863,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/meeting_beamformer.sv",
+      "bytes": 7132,
+      "sha256": "99778042460cee98e7aedc24a56bd065bff3a132ad176d5a14908d98025fec39",
+      "baseline_sha256": "99778042460cee98e7aedc24a56bd065bff3a132ad176d5a14908d98025fec39",
+      "baseline_bytes": 7132,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/meeting_spatial_mmio.sv",
+      "bytes": 7532,
+      "sha256": "9dbefb32a20e495fe5b28e5a31bf00a3731cafeca8f6336a0a883b6166fe65b4",
+      "baseline_sha256": "9dbefb32a20e495fe5b28e5a31bf00a3731cafeca8f6336a0a883b6166fe65b4",
+      "baseline_bytes": 7532,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/board/pango200pro/rv32_cached_feature_top.v",
+      "bytes": 1761,
+      "sha256": "9c4696db20340e4be5c6635a6301f79cca920e5bf72a6378e9d2d91c70acfa21",
+      "baseline_sha256": "9c4696db20340e4be5c6635a6301f79cca920e5bf72a6378e9d2d91c70acfa21",
+      "baseline_bytes": 1761,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/board/pango200pro/rv32_coremark_top.v",
+      "bytes": 736,
+      "sha256": "8b21b9e9c8809f50ace75e5376bd93a8d6ef0b1726658d6aecbc37c12386077a",
+      "baseline_sha256": "8b21b9e9c8809f50ace75e5376bd93a8d6ef0b1726658d6aecbc37c12386077a",
+      "baseline_bytes": 736,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/board/pango200pro/rv32_coremark_top_dual.v",
+      "bytes": 1790,
+      "sha256": "556077c32692f9d2e3dcbdec721af6886be13c34c9cd445f012c9fb1c5dce521",
+      "baseline_sha256": "556077c32692f9d2e3dcbdec721af6886be13c34c9cd445f012c9fb1c5dce521",
+      "baseline_bytes": 1790,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/board/pango200pro/rv32_coremark_top_tri.v",
+      "bytes": 371,
+      "sha256": "ccb094ab9e23ae6c5f9e6a67204f48a5eef8913538e9cc9d430541bb17b996c4",
+      "baseline_sha256": "ccb094ab9e23ae6c5f9e6a67204f48a5eef8913538e9cc9d430541bb17b996c4",
+      "baseline_bytes": 371,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/board/pango200pro/rv32_feature_top.v",
+      "bytes": 1086,
+      "sha256": "020ee562cc719ad96d2a1f97edbe150ebc1bdfee8e9c4637902de8fd09e7f73e",
+      "baseline_sha256": "020ee562cc719ad96d2a1f97edbe150ebc1bdfee8e9c4637902de8fd09e7f73e",
+      "baseline_bytes": 1086,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/board/pango200pro/rv32_machine_top.v",
+      "bytes": 999,
+      "sha256": "76356928b9d00e486546e2d1cb1bafaeb0aa8b8f96471334c5899c65b2b26e4a",
+      "baseline_sha256": "76356928b9d00e486546e2d1cb1bafaeb0aa8b8f96471334c5899c65b2b26e4a",
+      "baseline_bytes": 999,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_cache_2way.v",
+      "bytes": 13757,
+      "sha256": "c11ead6f1d8f6ca8b48293059a70e064ca1733a5d2521b95b486c4c4085631d8",
+      "baseline_sha256": "c11ead6f1d8f6ca8b48293059a70e064ca1733a5d2521b95b486c4c4085631d8",
+      "baseline_bytes": 13757,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_cache_burst_arbiter.v",
+      "bytes": 2699,
+      "sha256": "68d9dc707add329a9c2ed83a640b69fb76bd1629e373da78a24420fae329b7d7",
+      "baseline_sha256": "68d9dc707add329a9c2ed83a640b69fb76bd1629e373da78a24420fae329b7d7",
+      "baseline_bytes": 2699,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_cache_native_ram.v",
+      "bytes": 3458,
+      "sha256": "c0c0f561d4f4453d3846af981c99996e244a0135437a746562c82157526f8b1d",
+      "baseline_sha256": "c0c0f561d4f4453d3846af981c99996e244a0135437a746562c82157526f8b1d",
+      "baseline_bytes": 3458,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_cached_soc.v",
+      "bytes": 11215,
+      "sha256": "72b68c39e2c2478a85b16ff5ec77e96ee364e1b8a2197638f52dff64b910f52b",
+      "baseline_sha256": "72b68c39e2c2478a85b16ff5ec77e96ee364e1b8a2197638f52dff64b910f52b",
+      "baseline_bytes": 11215,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_coremark_soc.v",
+      "bytes": 6443,
+      "sha256": "fe8ac0e14176258ef0503483b8d9286e0766c3be2f52597127c256d9cf3b8f73",
+      "baseline_sha256": "fe8ac0e14176258ef0503483b8d9286e0766c3be2f52597127c256d9cf3b8f73",
+      "baseline_bytes": 6443,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_coremark_soc_dual.v",
+      "bytes": 8664,
+      "sha256": "a4bc0b18336443650d713d458c0b7843c3750dda42995fb1bd8916659fc60a91",
+      "baseline_sha256": "a4bc0b18336443650d713d458c0b7843c3750dda42995fb1bd8916659fc60a91",
+      "baseline_bytes": 8664,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_feature_peripherals.v",
+      "bytes": 3809,
+      "sha256": "d1d527750067dcb4905273fbb0ed4342ee7a17b0cdc34e39b80e8256cbed2e65",
+      "baseline_sha256": "d1d527750067dcb4905273fbb0ed4342ee7a17b0cdc34e39b80e8256cbed2e65",
+      "baseline_bytes": 3809,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_icache_triple.v",
+      "bytes": 3422,
+      "sha256": "f5a0738ec90ea30b5f46c14dc75dd180a357e6db20607ad73e3e2667e37e58fb",
+      "baseline_sha256": "f5a0738ec90ea30b5f46c14dc75dd180a357e6db20607ad73e3e2667e37e58fb",
+      "baseline_bytes": 3422,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_imem_dual.v",
+      "bytes": 1036,
+      "sha256": "c9aa1ea926292928c2738a75276725d80c187b5df09682771044293594388a6e",
+      "baseline_sha256": "c9aa1ea926292928c2738a75276725d80c187b5df09682771044293594388a6e",
+      "baseline_bytes": 1036,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_machine_soc.v",
+      "bytes": 11430,
+      "sha256": "83e6a475a3a4d1111eb862483d8ce85d8d3adfa8ff69a26ccc691e1b48983492",
+      "baseline_sha256": "83e6a475a3a4d1111eb862483d8ce85d8d3adfa8ff69a26ccc691e1b48983492",
+      "baseline_bytes": 11430,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_uart_rx_fifo.v",
+      "bytes": 3239,
+      "sha256": "af29063bc99cb7c55565817308f6567bc3a625d531dd65f302c0e40289a45cf4",
+      "baseline_sha256": "af29063bc99cb7c55565817308f6567bc3a625d531dd65f302c0e40289a45cf4",
+      "baseline_bytes": 3239,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/riscv_v053/rtl/soc/rv32_uart_tx_fifo.v",
+      "bytes": 6024,
+      "sha256": "593eba5f4855d383ee973c5df0784a61da66de676c3df27e39c9b3dcd28959c1",
+      "baseline_sha256": "593eba5f4855d383ee973c5df0784a61da66de676c3df27e39c9b3dcd28959c1",
+      "baseline_bytes": 6024,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/board/meeting_camera_mini200.sv",
+      "bytes": 3111,
+      "sha256": "e3a0ceb904a989942d2b9315eb7a732f6d167ca801e6202aab301ae9fdc7ce4d",
+      "baseline_sha256": "e3a0ceb904a989942d2b9315eb7a732f6d167ca801e6202aab301ae9fdc7ce4d",
+      "baseline_bytes": 3111,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/ov5640_snapshot.sv",
+      "bytes": 5986,
+      "sha256": "d644fd8e79d57da8c8e5f4e013d160a47615e6640665217e7b3a2c35e66a3b74",
+      "baseline_sha256": "d644fd8e79d57da8c8e5f4e013d160a47615e6640665217e7b3a2c35e66a3b74",
+      "baseline_bytes": 5986,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/array128_camera_mmio.sv",
+      "bytes": 5885,
+      "sha256": "fb8952dd72109f34a8a4ea79ff963fe5737c03927d89d71407f5ed3e70409c6c",
+      "baseline_sha256": "fb8952dd72109f34a8a4ea79ff963fe5737c03927d89d71407f5ed3e70409c6c",
+      "baseline_bytes": 5885,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/video/meeting_cdc_snapshot.sv",
+      "bytes": 1057,
+      "sha256": "b9190c54955a98381ceb9b2a50d757f65a807aaa1ec3aeb3f626f9749ece503c",
+      "baseline_sha256": "b9190c54955a98381ceb9b2a50d757f65a807aaa1ec3aeb3f626f9749ece503c",
+      "baseline_bytes": 1057,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/video/meeting_video_capture.sv",
+      "bytes": 4005,
+      "sha256": "dea8f5d126b24fadb1d6d09ed466bd4c9ef0e6c469d252f1bb81fc74e5dcb8c6",
+      "baseline_sha256": "dea8f5d126b24fadb1d6d09ed466bd4c9ef0e6c469d252f1bb81fc74e5dcb8c6",
+      "baseline_bytes": 4005,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/video/meeting_video_clocks.sv",
+      "bytes": 790,
+      "sha256": "1d1c1bdc378ff78830aa73c1b8f7106789131c41e9867462127e665d568729cd",
+      "baseline_sha256": "1d1c1bdc378ff78830aa73c1b8f7106789131c41e9867462127e665d568729cd",
+      "baseline_bytes": 790,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/video/meeting_video_control.sv",
+      "bytes": 2582,
+      "sha256": "3d4dfa01de3b5c40481d45ae0f4b908698badb4f705f513343d1febe7ee5ed05",
+      "baseline_sha256": "3d4dfa01de3b5c40481d45ae0f4b908698badb4f705f513343d1febe7ee5ed05",
+      "baseline_bytes": 2582,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/rtl/meeting_video_control_soc.sv",
+      "bytes": 12721,
+      "sha256": "e55ed41511de94c88ccc123d2f976a8dc1752ed93326c9c6f5aa74c9e17b90f5",
+      "baseline_sha256": "e55ed41511de94c88ccc123d2f976a8dc1752ed93326c9c6f5aa74c9e17b90f5",
+      "baseline_bytes": 12721,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/video/meeting_video_frame_store.sv",
+      "bytes": 5581,
+      "sha256": "6352d6c750892e7af9b207eb545404cd516aad7d7b3d5973747aa196c5830e76",
+      "baseline_sha256": "6352d6c750892e7af9b207eb545404cd516aad7d7b3d5973747aa196c5830e76",
+      "baseline_bytes": 5581,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/current_run/production/meeting_video_packetizer.sv",
+      "bytes": 4316,
+      "sha256": "c4ec3c24c404209482eac1f8ed232f717f218a9e7e1f96dd08e2217ff4d268fc",
+      "baseline_sha256": "c4ec3c24c404209482eac1f8ed232f717f218a9e7e1f96dd08e2217ff4d268fc",
+      "baseline_bytes": 4316,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/rtl/meeting_video_subsystem.sv",
+      "bytes": 9002,
+      "sha256": "7020481df75a433aabef47054ee7a575408f1aea249413cb44bde7d40774c267",
+      "baseline_sha256": "7020481df75a433aabef47054ee7a575408f1aea249413cb44bde7d40774c267",
+      "baseline_bytes": 9002,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/rtl/meeting_av_mini200.sv",
+      "bytes": 5108,
+      "sha256": "9e5062fc052a685219d81ec32bea2319c7b88c2f30159cdf8497f84f0649bc30",
+      "baseline_sha256": "9e5062fc052a685219d81ec32bea2319c7b88c2f30159cdf8497f84f0649bc30",
+      "baseline_bytes": 5108,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/board/pango_rgmii_io.v",
+      "bytes": 4703,
+      "sha256": "e9aa43f422d938b0647784842bf9520034b0018f726c570cafdb80a54a057c20",
+      "baseline_sha256": "e9aa43f422d938b0647784842bf9520034b0018f726c570cafdb80a54a057c20",
+      "baseline_bytes": 4703,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/rtl8211f_manager.sv",
+      "bytes": 14907,
+      "sha256": "410fe7387f2e4ce324a69ac71cb414327f2f70d8338041f63454083f6ea742d3",
+      "baseline_sha256": "410fe7387f2e4ce324a69ac71cb414327f2f70d8338041f63454083f6ea742d3",
+      "baseline_bytes": 14907,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/mdio_clause22.sv",
+      "bytes": 4479,
+      "sha256": "3cf2e46b9f96a90fd6ab8569a5ba450705a3c2241974ed39b799e95aa40ed770",
+      "baseline_sha256": "3cf2e46b9f96a90fd6ab8569a5ba450705a3c2241974ed39b799e95aa40ed770",
+      "baseline_bytes": 4479,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/mac_baseline/production/ethernet_udp_engine.sv",
+      "bytes": 21470,
+      "sha256": "9cd783539d62413620985ba153c0ad8a4b64ad04aeaf5a0d21b9072dd9ee6e4f",
+      "baseline_sha256": "9cd783539d62413620985ba153c0ad8a4b64ad04aeaf5a0d21b9072dd9ee6e4f",
+      "baseline_bytes": 21470,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/net/ethernet_arp_rx.sv",
+      "bytes": 6099,
+      "sha256": "fef5d3806c2657a6719d974ed7b6504d269dc59f1177a9c2cf0c76a094a1a562",
+      "baseline_sha256": "fef5d3806c2657a6719d974ed7b6504d269dc59f1177a9c2cf0c76a094a1a562",
+      "baseline_bytes": 6099,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rv32_imem.idf",
+      "bytes": 3910,
+      "sha256": "b3f514e073e4a6f06d83531e2adcdb4ff1b509630fb09b9247d886a3d09dc018",
+      "baseline_sha256": "2f7a15b79ccad758ed624bdd26eb7d29b61d253d36a23298744de1544d542710",
+      "baseline_bytes": 4047,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": true
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rv32_dmem.idf",
+      "bytes": 5910,
+      "sha256": "e8466f2296159745979b6bf0a308503e767bb69d5510913e5f49c375d2256271",
+      "baseline_sha256": "5729d917845c6b2dca7c4869f0c7c19f779e9ae4884ac1c2f03f417a2ebfddbd",
+      "baseline_bytes": 6047,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": true
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/DDR_200H.idf",
+      "bytes": 77649,
+      "sha256": "63ef1a0d1b1eafdcdb284d59bf2975b313cae9945c9c6dea696b79ade1462c53",
+      "baseline_sha256": "63ef1a0d1b1eafdcdb284d59bf2975b313cae9945c9c6dea696b79ade1462c53",
+      "baseline_bytes": 77649,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_alu.v",
+      "bytes": 4123,
+      "sha256": "673c58e06b8d38311670fc70ec2d96df09c1f93198c15a6fe9a1db5d56f406dc",
+      "baseline_sha256": "673c58e06b8d38311670fc70ec2d96df09c1f93198c15a6fe9a1db5d56f406dc",
+      "baseline_bytes": 4123,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_branch_cmp.v",
+      "bytes": 627,
+      "sha256": "3ccaf590d8bb23021ae7ea1df3048276b1c31f8aa6375d32b4693d93927ac11e",
+      "baseline_sha256": "3ccaf590d8bb23021ae7ea1df3048276b1c31f8aa6375d32b4693d93927ac11e",
+      "baseline_bytes": 627,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_core_tri.v",
+      "bytes": 70292,
+      "sha256": "6b4e0cbf94084bbebf75ec68660ffa6f0a8e28d04d69afe491b78fbd0053e52c",
+      "baseline_sha256": "6b4e0cbf94084bbebf75ec68660ffa6f0a8e28d04d69afe491b78fbd0053e52c",
+      "baseline_bytes": 70292,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_core.v",
+      "bytes": 25308,
+      "sha256": "d6a9597683eb9a93e94195195fa4e058986865b780798e31cd39b14af8b370b2",
+      "baseline_sha256": "d6a9597683eb9a93e94195195fa4e058986865b780798e31cd39b14af8b370b2",
+      "baseline_bytes": 25308,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_decoder.v",
+      "bytes": 3628,
+      "sha256": "ba8b99f11d0bc7e4e2a97c7756e2854578ecda868e0cc369b118876202ecea8a",
+      "baseline_sha256": "ba8b99f11d0bc7e4e2a97c7756e2854578ecda868e0cc369b118876202ecea8a",
+      "baseline_bytes": 3628,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_ex_mem_reg.v",
+      "bytes": 3682,
+      "sha256": "9e95d5a650a48f3f9feff9407bb2befb404584714d9d817ab5cdbc479213abdd",
+      "baseline_sha256": "9e95d5a650a48f3f9feff9407bb2befb404584714d9d817ab5cdbc479213abdd",
+      "baseline_bytes": 3682,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_fetch_issue_metadata.v",
+      "bytes": 671,
+      "sha256": "ec529adb7ef0003a3013385a3b8180112baf4f0ae6280112a215820fa6b787c9",
+      "baseline_sha256": "ec529adb7ef0003a3013385a3b8180112baf4f0ae6280112a215820fa6b787c9",
+      "baseline_bytes": 671,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_fetch_port.v",
+      "bytes": 1932,
+      "sha256": "264882a10d974b2db0e4ef51b3334cfa0f1e1ba4e0b8fafde3da4c18bab210af",
+      "baseline_sha256": "264882a10d974b2db0e4ef51b3334cfa0f1e1ba4e0b8fafde3da4c18bab210af",
+      "baseline_bytes": 1932,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_forward_unit.v",
+      "bytes": 2832,
+      "sha256": "216a42430bfb90aeed1242cb465646691b13269fa2c596404737576024c7ae6b",
+      "baseline_sha256": "216a42430bfb90aeed1242cb465646691b13269fa2c596404737576024c7ae6b",
+      "baseline_bytes": 2832,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_hazard_unit.v",
+      "bytes": 3983,
+      "sha256": "09f9b93596efb83beebc852338b0535dd591a76f092d73797a167c4b7e167148",
+      "baseline_sha256": "09f9b93596efb83beebc852338b0535dd591a76f092d73797a167c4b7e167148",
+      "baseline_bytes": 3983,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_id_ex_reg.v",
+      "bytes": 4864,
+      "sha256": "0a262f006a89727696a5d81dd41b5cfd22064af89803ef9bf9d4cf4a363500ec",
+      "baseline_sha256": "0a262f006a89727696a5d81dd41b5cfd22064af89803ef9bf9d4cf4a363500ec",
+      "baseline_bytes": 4864,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_if_id_reg.v",
+      "bytes": 1194,
+      "sha256": "9d69cc9d0d0fe4c780d66ae7374d739a2561ed070118bc00d3b76e6a2a9ec0b9",
+      "baseline_sha256": "9d69cc9d0d0fe4c780d66ae7374d739a2561ed070118bc00d3b76e6a2a9ec0b9",
+      "baseline_bytes": 1194,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_if_rom_offset_select_jalr.v",
+      "bytes": 1558,
+      "sha256": "a663243d4346886f2315fdc9f9179231e0cd511aadc5c83634be3a1da54f0b95",
+      "baseline_sha256": "a663243d4346886f2315fdc9f9179231e0cd511aadc5c83634be3a1da54f0b95",
+      "baseline_bytes": 1558,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_if_rom_offset_select.v",
+      "bytes": 1338,
+      "sha256": "839b6c1ebfbc97620dbbf0a978519189a1cff895a9a419cec22909e52d78dc7c",
+      "baseline_sha256": "839b6c1ebfbc97620dbbf0a978519189a1cff895a9a419cec22909e52d78dc7c",
+      "baseline_bytes": 1338,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_imm_gen.v",
+      "bytes": 1179,
+      "sha256": "eebe736c4fb1f00eaf6617c16d85dedb2717ef4e46b633cc943be09b770d2e86",
+      "baseline_sha256": "eebe736c4fb1f00eaf6617c16d85dedb2717ef4e46b633cc943be09b770d2e86",
+      "baseline_bytes": 1179,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_issue_pair.v",
+      "bytes": 3139,
+      "sha256": "896220077f42bcabc6d16b46ac2aa3e14429d08eeb5da12ff1586fb8e259580c",
+      "baseline_sha256": "896220077f42bcabc6d16b46ac2aa3e14429d08eeb5da12ff1586fb8e259580c",
+      "baseline_bytes": 3139,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_local_capture_view.v",
+      "bytes": 962,
+      "sha256": "efb556ac1ed4a9a6d495d287c5189a28531a992999ce521a07ba9cb3edc4bd31",
+      "baseline_sha256": "efb556ac1ed4a9a6d495d287c5189a28531a992999ce521a07ba9cb3edc4bd31",
+      "baseline_bytes": 962,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_local_fetch_window.v",
+      "bytes": 4646,
+      "sha256": "f898aaaa99465fb8468957b1a9256cf081d9c83fee32c32d27dca8debd547c52",
+      "baseline_sha256": "f898aaaa99465fb8468957b1a9256cf081d9c83fee32c32d27dca8debd547c52",
+      "baseline_bytes": 4646,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_lsu.v",
+      "bytes": 10564,
+      "sha256": "0277131dc0e8ad80b8f6dd2fa1c062c8a42dcc2e60192b0d8829b4a02057df42",
+      "baseline_sha256": "0277131dc0e8ad80b8f6dd2fa1c062c8a42dcc2e60192b0d8829b4a02057df42",
+      "baseline_bytes": 10564,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_machine_csr.v",
+      "bytes": 5248,
+      "sha256": "1c6c3a96c2384cd560db8c9339a43d0bb29fdbd64e303e7bd485b019f7a1fb87",
+      "baseline_sha256": "1c6c3a96c2384cd560db8c9339a43d0bb29fdbd64e303e7bd485b019f7a1fb87",
+      "baseline_bytes": 5248,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_mem_port.v",
+      "bytes": 1586,
+      "sha256": "b242b776843081d73a516d8ba3058826e5f210bb680a53ffd3fcd592a3713b72",
+      "baseline_sha256": "b242b776843081d73a516d8ba3058826e5f210bb680a53ffd3fcd592a3713b72",
+      "baseline_bytes": 1586,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_mem_wb_reg.v",
+      "bytes": 3293,
+      "sha256": "8c031713f896485e96a0643af3076b299e9140c37fd74cdd1cb1e78c8155f989",
+      "baseline_sha256": "8c031713f896485e96a0643af3076b299e9140c37fd74cdd1cb1e78c8155f989",
+      "baseline_bytes": 3293,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_mul_pair_capture_logic.v",
+      "bytes": 719,
+      "sha256": "fad0bc0a9a862dba775b6f87efce61b8f79113d26af2a6dcbd727f3cf9f6ea9f",
+      "baseline_sha256": "fad0bc0a9a862dba775b6f87efce61b8f79113d26af2a6dcbd727f3cf9f6ea9f",
+      "baseline_bytes": 719,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_mul_unit.v",
+      "bytes": 4982,
+      "sha256": "a9379e2c1b9bbfd0347c32fe44f9d5eca1b5ebab5d2c463631600febb467f463",
+      "baseline_sha256": "a9379e2c1b9bbfd0347c32fe44f9d5eca1b5ebab5d2c463631600febb467f463",
+      "baseline_bytes": 4982,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_next_pc.v",
+      "bytes": 3406,
+      "sha256": "0b2d2f4b52f4bcdd75a15e380e2f3fa9dd794c04175250982c5bf3af27b4eb23",
+      "baseline_sha256": "0b2d2f4b52f4bcdd75a15e380e2f3fa9dd794c04175250982c5bf3af27b4eb23",
+      "baseline_bytes": 3406,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_operand_wait_leaf.v",
+      "bytes": 567,
+      "sha256": "c8ca2f420b1c99de4023c4d8cafe78ada68f673d947460355200c51cefec4b90",
+      "baseline_sha256": "c8ca2f420b1c99de4023c4d8cafe78ada68f673d947460355200c51cefec4b90",
+      "baseline_bytes": 567,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_pc_reg.v",
+      "bytes": 690,
+      "sha256": "2fa7205fb70f2f9d5387dc0725c0006978c5f7966e4eb6756cceb06cd9785559",
+      "baseline_sha256": "2fa7205fb70f2f9d5387dc0725c0006978c5f7966e4eb6756cceb06cd9785559",
+      "baseline_bytes": 690,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_regfile_4r2w.v",
+      "bytes": 2898,
+      "sha256": "a3f26cb421b857ebc63005c0fa8bb1164444d3b0e81ccdf94dba043a8ed86f36",
+      "baseline_sha256": "a3f26cb421b857ebc63005c0fa8bb1164444d3b0e81ccdf94dba043a8ed86f36",
+      "baseline_bytes": 2898,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_regfile_6r3w.v",
+      "bytes": 3604,
+      "sha256": "23319ccba3f89c8025da73dd6065f42046cdf07ed9fbe502cc7c51cc630449f8",
+      "baseline_sha256": "23319ccba3f89c8025da73dd6065f42046cdf07ed9fbe502cc7c51cc630449f8",
+      "baseline_bytes": 3604,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_regfile.v",
+      "bytes": 1161,
+      "sha256": "c0c745dd07a7ea18400f7eef91d2c13f3e3f30fdcd98c3f67c89752fc3add97e",
+      "baseline_sha256": "c0c745dd07a7ea18400f7eef91d2c13f3e3f30fdcd98c3f67c89752fc3add97e",
+      "baseline_bytes": 1161,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_rom_word_priority.v",
+      "bytes": 1634,
+      "sha256": "10cc8c2a49d8064a35b9c5f24a356152a0defc9ade272e1a52277d57c0ea626a",
+      "baseline_sha256": "10cc8c2a49d8064a35b9c5f24a356152a0defc9ade272e1a52277d57c0ea626a",
+      "baseline_bytes": 1634,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_tri_execute.v",
+      "bytes": 30243,
+      "sha256": "45070b046a3e598be92a88704b1951ee03c572f18993c9a5d18b58d633455932",
+      "baseline_sha256": "45070b046a3e598be92a88704b1951ee03c572f18993c9a5d18b58d633455932",
+      "baseline_bytes": 30243,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_tri_issue.v",
+      "bytes": 21965,
+      "sha256": "d5d01c093d310ed61f1a06a58f3b9506e666005fe0237148bbed87db374c49af",
+      "baseline_sha256": "d5d01c093d310ed61f1a06a58f3b9506e666005fe0237148bbed87db374c49af",
+      "baseline_bytes": 21965,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_tri_operands.v",
+      "bytes": 25271,
+      "sha256": "ee4888cb3b67fce90f0f6430f70402448a1ac1b2010e7b589eff38982a2214ad",
+      "baseline_sha256": "ee4888cb3b67fce90f0f6430f70402448a1ac1b2010e7b589eff38982a2214ad",
+      "baseline_bytes": 25271,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/core/rv32_tri_predict.v",
+      "bytes": 17367,
+      "sha256": "e8041ecafc5c2e098f25bdaaa67a67687c64471555d398aafc78373a59fc0973",
+      "baseline_sha256": "e8041ecafc5c2e098f25bdaaa67a67687c64471555d398aafc78373a59fc0973",
+      "baseline_bytes": 17367,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/v105/soc/rv32_core_bus.v",
+      "bytes": 6238,
+      "sha256": "836d2167ae0d36d94091b32a51508fc7ed782bea538fd4dc0659cf333b281aa0",
+      "baseline_sha256": "836d2167ae0d36d94091b32a51508fc7ed782bea538fd4dc0659cf333b281aa0",
+      "baseline_bytes": 6238,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/cpu_v105/rtl/rv32_cached_core_bus.v",
+      "bytes": 4397,
+      "sha256": "7b2dcacf914582f426d994d138f53df7cb23d44978c913438f301e0b360a14de",
+      "baseline_sha256": "7b2dcacf914582f426d994d138f53df7cb23d44978c913438f301e0b360a14de",
+      "baseline_bytes": 4397,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/rtl/meeting_raw_pcm_transport.sv",
+      "bytes": 4947,
+      "sha256": "4769593ba476d083cc21e7e53bd78e0aac637eb3419e1001c11ed163a73ad5f0",
+      "baseline_sha256": "4769593ba476d083cc21e7e53bd78e0aac637eb3419e1001c11ed163a73ad5f0",
+      "baseline_bytes": 4947,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/rtl/meeting_raw_async_fifo.sv",
+      "bytes": 2356,
+      "sha256": "7516872fcb37bfd6e93f33646f15fd7005ab130cdad71dca0b6b638084acb780",
+      "baseline_sha256": "7516872fcb37bfd6e93f33646f15fd7005ab130cdad71dca0b6b638084acb780",
+      "baseline_bytes": 2356,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/rtl/pcm_udp_packetizer.sv",
+      "bytes": 7292,
+      "sha256": "9c8ec0ce1d4c6cdc5132a10ff99616c93ea7bf00bfa8777d0dfcbff2560e1455",
+      "baseline_sha256": "9c8ec0ce1d4c6cdc5132a10ff99616c93ea7bf00bfa8777d0dfcbff2560e1455",
+      "baseline_bytes": 7292,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/rtl/meeting_packet_arbiter.sv",
+      "bytes": 1413,
+      "sha256": "abbf639acf6ab1e7600f1cc86100b0479ff57fc3d94ddbdbdab32148840471f8",
+      "baseline_sha256": "abbf639acf6ab1e7600f1cc86100b0479ff57fc3d94ddbdbdab32148840471f8",
+      "baseline_bytes": 1413,
+      "roles": [
+        "direct_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rtl/ipm2l_rom_v1_8_rv32_imem.v",
+      "bytes": 2926,
+      "sha256": "ad2769e819a2de3089ffd03af4e64cfef7a999becb1b8449d78fa8e77982404d",
+      "baseline_sha256": "ad2769e819a2de3089ffd03af4e64cfef7a999becb1b8449d78fa8e77982404d",
+      "baseline_bytes": 2926,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rtl/ipm2l_spram_v1_8_rv32_imem.v",
+      "bytes": 51827,
+      "sha256": "a3ec0b270948840593f7b1a4b3cd9df0296ac171992a0435afd3db5fcc17bed0",
+      "baseline_sha256": "a3ec0b270948840593f7b1a4b3cd9df0296ac171992a0435afd3db5fcc17bed0",
+      "baseline_bytes": 51827,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rv32_imem.v",
+      "bytes": 4621,
+      "sha256": "709d2c4bd7df11da5e8a254fa4f7c46744436c7cef60391ed77643d35463edeb",
+      "baseline_sha256": "61c4c1b37e4c33d4bdce0756f1032f6fc023c80f4f698e6d4c37da1e0ef06841",
+      "baseline_bytes": 4758,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": true
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rtl/ipm2l_sdpram_v1_10_rv32_dmem.v",
+      "bytes": 81352,
+      "sha256": "feb5831b3c549ff9dfa0937e7f4008ea85271ae48bfee71839452187e7200ea0",
+      "baseline_sha256": "feb5831b3c549ff9dfa0937e7f4008ea85271ae48bfee71839452187e7200ea0",
+      "baseline_bytes": 81352,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rv32_dmem.v",
+      "bytes": 8115,
+      "sha256": "915f4689ad04ab53a4260d6a2e9947b9f23da49a7d0678b08231a1c68c09caaf",
+      "baseline_sha256": "381b285ff9fc86974726f62351f36d0b28539876d0e9a71cf611d83b86adda2a",
+      "baseline_bytes": 8252,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": true
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ips2l_rst_sync_v1_3.vp",
+      "bytes": 3024,
+      "sha256": "64b8d83f15f2ff373e6b1040405c42051d8761bd1857dec719c884c2eb59361a",
+      "baseline_sha256": "64b8d83f15f2ff373e6b1040405c42051d8761bd1857dec719c884c2eb59361a",
+      "baseline_bytes": 3024,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_wrlvl_v1_0.vp",
+      "bytes": 12764,
+      "sha256": "00c086bd729be3ab8287f6eb786cfb3549c97aa92f8465c608b8fc2477df3edc",
+      "baseline_sha256": "00c086bd729be3ab8287f6eb786cfb3549c97aa92f8465c608b8fc2477df3edc",
+      "baseline_bytes": 12764,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_wrcal_v1_7.vp",
+      "bytes": 37069,
+      "sha256": "0a8cb0bb70bd40809260c50bcb85d092c16fea5d9ab2e4fbbe647ccbd1bfb1b0",
+      "baseline_sha256": "0a8cb0bb70bd40809260c50bcb85d092c16fea5d9ab2e4fbbe647ccbd1bfb1b0",
+      "baseline_bytes": 37069,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_wdata_path_adj_v1_10.vp",
+      "bytes": 16469,
+      "sha256": "85f625ed4a09964442e8616074eea9e4757e43b4217589bb9e2f289c9748b272",
+      "baseline_sha256": "85f625ed4a09964442e8616074eea9e4757e43b4217589bb9e2f289c9748b272",
+      "baseline_bytes": 16469,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_upcal_v1_0.vp",
+      "bytes": 10182,
+      "sha256": "afbca3503da609f7951ad7fbef386bd007f403c89f52377211ba521967c94455",
+      "baseline_sha256": "afbca3503da609f7951ad7fbef386bd007f403c89f52377211ba521967c94455",
+      "baseline_bytes": 10182,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_training_ctrl_v1_0.vp",
+      "bytes": 4908,
+      "sha256": "777e8ee9d8d819fdcf04b39b5a5d6086c52369a7f19f04dbd0d06f7a7d3d6110",
+      "baseline_sha256": "777e8ee9d8d819fdcf04b39b5a5d6086c52369a7f19f04dbd0d06f7a7d3d6110",
+      "baseline_bytes": 4908,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_slice_rddata_align_v1_0.vp",
+      "bytes": 6878,
+      "sha256": "befb44f07d851524109a6dc8e17c5b8062694aa274ed8dbc4f7326b8fe1c443e",
+      "baseline_sha256": "befb44f07d851524109a6dc8e17c5b8062694aa274ed8dbc4f7326b8fe1c443e",
+      "baseline_bytes": 6878,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_reset_ctrl_v1_3.vp",
+      "bytes": 19445,
+      "sha256": "17189b59ed5307c4a27ec35485b33af5c98a89e6ee7f9c5d85aaed9c03a77163",
+      "baseline_sha256": "17189b59ed5307c4a27ec35485b33af5c98a89e6ee7f9c5d85aaed9c03a77163",
+      "baseline_bytes": 19445,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_rdcal_v1_10.vp",
+      "bytes": 56971,
+      "sha256": "6b4c7f3c24a4750ac69b4e7882617105c6e31f02da712aaa87932b8561ccea2b",
+      "baseline_sha256": "6b4c7f3c24a4750ac69b4e7882617105c6e31f02da712aaa87932b8561ccea2b",
+      "baseline_bytes": 56971,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_main_ctrl_v1_10.vp",
+      "bytes": 13750,
+      "sha256": "39d5024d7364b441340b131d265d0648d8b7c1f92cc417424d7c584413c5f4a6",
+      "baseline_sha256": "39d5024d7364b441340b131d265d0648d8b7c1f92cc417424d7c584413c5f4a6",
+      "baseline_bytes": 13750,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_init_v1_0.vp",
+      "bytes": 43375,
+      "sha256": "817f9f32b2260a4c35af446e89ff4c2d4b065381b25cb2020c538d22b4a45088",
+      "baseline_sha256": "817f9f32b2260a4c35af446e89ff4c2d4b065381b25cb2020c538d22b4a45088",
+      "baseline_bytes": 43375,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_info_v1_0.vp",
+      "bytes": 12042,
+      "sha256": "0794201be97885e7695a16b6c35848655b08c4bf191405d26417126512ce4aa8",
+      "baseline_sha256": "0794201be97885e7695a16b6c35848655b08c4bf191405d26417126512ce4aa8",
+      "baseline_bytes": 12042,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_gatecal_v1_10.vp",
+      "bytes": 17323,
+      "sha256": "b6859250ca098e81ff05bcab08dfe8ffee77648218e90c040a1dd3838a0671f2",
+      "baseline_sha256": "b6859250ca098e81ff05bcab08dfe8ffee77648218e90c040a1dd3838a0671f2",
+      "baseline_bytes": 17323,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_gate_update_ctrl_v1_3.vp",
+      "bytes": 6262,
+      "sha256": "ce20eb3b9cbe3b392d8be0aa1d6787247bc7b2d91af36a1f734f35c9eb03d642",
+      "baseline_sha256": "ce20eb3b9cbe3b392d8be0aa1d6787247bc7b2d91af36a1f734f35c9eb03d642",
+      "baseline_bytes": 6262,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_eyecal_v1_5.vp",
+      "bytes": 16271,
+      "sha256": "31977dd34339d163ecbd8b9949ac4b65f0eaa6fbcd9a75d787400ae73f7f51d2",
+      "baseline_sha256": "31977dd34339d163ecbd8b9949ac4b65f0eaa6fbcd9a75d787400ae73f7f51d2",
+      "baseline_bytes": 16271,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_drift_ctrl_v1_0.vp",
+      "bytes": 7226,
+      "sha256": "8ea99ac6decf6fe14c0585b4f121d7a1acc17290d7a1c68725d984e704e277bc",
+      "baseline_sha256": "8ea99ac6decf6fe14c0585b4f121d7a1acc17290d7a1c68725d984e704e277bc",
+      "baseline_bytes": 7226,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dqsi_rdel_cal_v1_3.vp",
+      "bytes": 29297,
+      "sha256": "ef7e57755ab7558b1b518aa73999384368f349efe7077cf9283e0911e711ac1a",
+      "baseline_sha256": "ef7e57755ab7558b1b518aa73999384368f349efe7077cf9283e0911e711ac1a",
+      "baseline_bytes": 29297,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dqs_rddata_align_v1_10.vp",
+      "bytes": 39545,
+      "sha256": "c0cab4287a7a7b6b720977c1c5f9259c5f48f8da18e9a3ca1173a073b1ccf025",
+      "baseline_sha256": "c0cab4287a7a7b6b720977c1c5f9259c5f48f8da18e9a3ca1173a073b1ccf025",
+      "baseline_bytes": 39545,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dqs_gate_coarse_cal_v1_0.vp",
+      "bytes": 11936,
+      "sha256": "950a0010929854894c2c92d9f3f8e9dce0fee6985fee70d4160540a058853ede",
+      "baseline_sha256": "950a0010929854894c2c92d9f3f8e9dce0fee6985fee70d4160540a058853ede",
+      "baseline_bytes": 11936,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dll_update_ctrl_v1_3.vp",
+      "bytes": 8102,
+      "sha256": "bc4e8f402d2fb98920e050a3c1514d44ec959877217d7865a30b22b7da73cac6",
+      "baseline_sha256": "bc4e8f402d2fb98920e050a3c1514d44ec959877217d7865a30b22b7da73cac6",
+      "baseline_bytes": 8102,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dfi_v1_3.vp",
+      "bytes": 23431,
+      "sha256": "9828a1ef43a864d287a7a317910fe330bfc904f44e8f60c8773aafa1d8c1534e",
+      "baseline_sha256": "9828a1ef43a864d287a7a317910fe330bfc904f44e8f60c8773aafa1d8c1534e",
+      "baseline_bytes": 23431,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_gpll_phase_v1_0.vp",
+      "bytes": 3812,
+      "sha256": "ef8ebe3742d23848bd2a1492d4901f886ce49aa98dbc295873b67e4116ba8524",
+      "baseline_sha256": "ef8ebe3742d23848bd2a1492d4901f886ce49aa98dbc295873b67e4116ba8524",
+      "baseline_bytes": 3812,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_data_slice_wrlvl_v1_10.vp",
+      "bytes": 21219,
+      "sha256": "871874f4af0f068571416916898f83eb07052e6e015c5800ffdf65d67620cf7e",
+      "baseline_sha256": "871874f4af0f068571416916898f83eb07052e6e015c5800ffdf65d67620cf7e",
+      "baseline_bytes": 21219,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_data_slice_wrcal_v1_10.vp",
+      "bytes": 20167,
+      "sha256": "b7a9757c252f74c4b57eb0fb74738c57e4eed3e669ddd7ffeeca1acedd330b2e",
+      "baseline_sha256": "b7a9757c252f74c4b57eb0fb74738c57e4eed3e669ddd7ffeeca1acedd330b2e",
+      "baseline_bytes": 20167,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_data_slice_v1_10.vp",
+      "bytes": 43859,
+      "sha256": "e13e33d97ecbfea1838c4dd28e7f9f1c57dcb974606179523be46bba75344d50",
+      "baseline_sha256": "e13e33d97ecbfea1838c4dd28e7f9f1c57dcb974606179523be46bba75344d50",
+      "baseline_bytes": 43859,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_data_slice_dqs_gate_cal_v1_10.vp",
+      "bytes": 7140,
+      "sha256": "8764275d4eeb8d1765b3a09aba527d6d3bf3e46f5e1d17eefc685d7e0dbe1520",
+      "baseline_sha256": "8764275d4eeb8d1765b3a09aba527d6d3bf3e46f5e1d17eefc685d7e0dbe1520",
+      "baseline_bytes": 7140,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_cpd_ctrl_v1_3.vp",
+      "bytes": 12614,
+      "sha256": "56f52683adbe720c7d43da1a9f199f4ab3add3f3b5960e3f687f87f60267c161",
+      "baseline_sha256": "56f52683adbe720c7d43da1a9f199f4ab3add3f3b5960e3f687f87f60267c161",
+      "baseline_bytes": 12614,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_cpd_lock_v1_0.vp",
+      "bytes": 3988,
+      "sha256": "a6696f8e79e2d132a6e76ad4997d5366d6c9cf8f05c60f77feff1b47b50d0090",
+      "baseline_sha256": "a6696f8e79e2d132a6e76ad4997d5366d6c9cf8f05c60f77feff1b47b50d0090",
+      "baseline_bytes": 3988,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_control_path_adj_v1_10.vp",
+      "bytes": 8870,
+      "sha256": "8cdd7b9ec01c143882217b038cbf840d77e52ee3037e629e75e10b03fc223a38",
+      "baseline_sha256": "8cdd7b9ec01c143882217b038cbf840d77e52ee3037e629e75e10b03fc223a38",
+      "baseline_bytes": 8870,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_calib_top_v1_10.vp",
+      "bytes": 29035,
+      "sha256": "04faf434cef120b5d712911dfc97c8f498901b0679fba720b806f596d688bded",
+      "baseline_sha256": "04faf434cef120b5d712911dfc97c8f498901b0679fba720b806f596d688bded",
+      "baseline_bytes": 29035,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_calib_mux_v1_0.vp",
+      "bytes": 13948,
+      "sha256": "676e36319e7ce80b93e3543e255d53708d9fc71606587a6e692eab1ec82ecaed",
+      "baseline_sha256": "676e36319e7ce80b93e3543e255d53708d9fc71606587a6e692eab1ec82ecaed",
+      "baseline_bytes": 13948,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_rst_debounce_v1_0.vp",
+      "bytes": 4580,
+      "sha256": "bff7ed95c8d305dfb88e6002c6de8453a21c72c03a5a0521a76ddd105598dc4d",
+      "baseline_sha256": "bff7ed95c8d305dfb88e6002c6de8453a21c72c03a5a0521a76ddd105598dc4d",
+      "baseline_bytes": 4580,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_rst_clk_phase_adj_v1_0.vp",
+      "bytes": 7292,
+      "sha256": "dd1dbae71726d968df475fe7fbb2b7321411fa67786092c0dc2e065edcf39382",
+      "baseline_sha256": "dd1dbae71726d968df475fe7fbb2b7321411fa67786092c0dc2e065edcf39382",
+      "baseline_bytes": 7292,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/pll/ips2l_ddrphy_gpll_v1_3.vp",
+      "bytes": 8324,
+      "sha256": "3fecc367573a4b5bd158e1a8ff106c5c401c5f180143e8e5abe6bb068e5078d2",
+      "baseline_sha256": "3fecc367573a4b5bd158e1a8ff106c5c401c5f180143e8e5abe6bb068e5078d2",
+      "baseline_bytes": 8324,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/pll/ips2l_ddrphy_ppll_v1_0.vp",
+      "bytes": 17323,
+      "sha256": "34bb46106b84eab147f130bd7526f1486d35caeb40b0258cd59656e50d19dddd",
+      "baseline_sha256": "34bb46106b84eab147f130bd7526f1486d35caeb40b0258cd59656e50d19dddd",
+      "baseline_bytes": 17323,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_apb_cross_v1_2.vp",
+      "bytes": 9592,
+      "sha256": "62f7d55354a8afe4d02bc6f6d6dc30fc8e9960d3b21709988b887acc99d09cf5",
+      "baseline_sha256": "62f7d55354a8afe4d02bc6f6d6dc30fc8e9960d3b21709988b887acc99d09cf5",
+      "baseline_bytes": 9592,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_calib_delay_v1_2.vp",
+      "bytes": 6590,
+      "sha256": "a52e992b9766b6cb22ed23aa01d1cc5ac9b6a429a8e49de7a13ac51dd70e9784",
+      "baseline_sha256": "a52e992b9766b6cb22ed23aa01d1cc5ac9b6a429a8e49de7a13ac51dd70e9784",
+      "baseline_bytes": 6590,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_cfg_apb_v1_2.vp",
+      "bytes": 42389,
+      "sha256": "482cb280a614f70209f1d07892fdd773a259d2ca0f23e8f38b85a9faf00513b9",
+      "baseline_sha256": "482cb280a614f70209f1d07892fdd773a259d2ca0f23e8f38b85a9faf00513b9",
+      "baseline_bytes": 42389,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcd_bm_v1_2.vp",
+      "bytes": 17651,
+      "sha256": "bfbd472dd8b427fe6b003dd510f73db89f915ac92d31fe8a779c40f9d4e56bee",
+      "baseline_sha256": "bfbd472dd8b427fe6b003dd510f73db89f915ac92d31fe8a779c40f9d4e56bee",
+      "baseline_bytes": 17651,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcd_rowaddr_v1_2.vp",
+      "bytes": 4580,
+      "sha256": "4ac4721747b13020e1895be6265e55df90968f05beb8056279589039394bb9be",
+      "baseline_sha256": "4ac4721747b13020e1895be6265e55df90968f05beb8056279589039394bb9be",
+      "baseline_bytes": 4580,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcd_sm_v1_2.vp",
+      "bytes": 15064,
+      "sha256": "d7e710e3ed4d1807fb0bdd4d84c264817247a4da41123c72439c555573821f49",
+      "baseline_sha256": "d7e710e3ed4d1807fb0bdd4d84c264817247a4da41123c72439c555573821f49",
+      "baseline_bytes": 15064,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcd_top_v1_2.vp",
+      "bytes": 12330,
+      "sha256": "26ab4e142f555602c023f62b19df52056c6d51da5052401254066cae0655ddaa",
+      "baseline_sha256": "26ab4e142f555602c023f62b19df52056c6d51da5052401254066cae0655ddaa",
+      "baseline_bytes": 12330,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcp_back_ctrl_v1_2.vp",
+      "bytes": 48957,
+      "sha256": "fe7b340b41d80ec7428cc38329a41864bcf5c209a6310610d09c7bc8579e541f",
+      "baseline_sha256": "fe7b340b41d80ec7428cc38329a41864bcf5c209a6310610d09c7bc8579e541f",
+      "baseline_bytes": 48957,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcp_buf_v1_2.vp",
+      "bytes": 22007,
+      "sha256": "dab35fa172243ecbb5426a8ebccc2c168368ea0a6ea0558c909b815d781b17d6",
+      "baseline_sha256": "dab35fa172243ecbb5426a8ebccc2c168368ea0a6ea0558c909b815d781b17d6",
+      "baseline_bytes": 22007,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcp_out_v1_2.vp",
+      "bytes": 15064,
+      "sha256": "9471082e23170b144dc619f7f7e08c94b8a03378f72da388f744d6acb728928b",
+      "baseline_sha256": "9471082e23170b144dc619f7f7e08c94b8a03378f72da388f744d6acb728928b",
+      "baseline_bytes": 15064,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcp_top_v1_2.vp",
+      "bytes": 24371,
+      "sha256": "21b1f0e3b4660e1078b47000bfe50022346414f5d5e713ac9e522a4f39f76548",
+      "baseline_sha256": "21b1f0e3b4660e1078b47000bfe50022346414f5d5e713ac9e522a4f39f76548",
+      "baseline_bytes": 24371,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dfi_v1_2.vp",
+      "bytes": 32495,
+      "sha256": "abf138d692e634fabe5f569b98d897dfece8a8ae66cee1dba830a56d7e255df1",
+      "baseline_sha256": "abf138d692e634fabe5f569b98d897dfece8a8ae66cee1dba830a56d7e255df1",
+      "baseline_bytes": 32495,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_lp_v1_2.vp",
+      "bytes": 23123,
+      "sha256": "7a80ccb1e053e5c9d8f389169359570f256d709ff2e4ad2c51fda7a7a6a4239d",
+      "baseline_sha256": "7a80ccb1e053e5c9d8f389169359570f256d709ff2e4ad2c51fda7a7a6a4239d",
+      "baseline_bytes": 23123,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_mrs_v1_2.vp",
+      "bytes": 23735,
+      "sha256": "f78133bc021a57cf469773daaf102817fc37069447e8accc80afa1f4b20b0ad6",
+      "baseline_sha256": "f78133bc021a57cf469773daaf102817fc37069447e8accc80afa1f4b20b0ad6",
+      "baseline_bytes": 23735,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_prefetch_fifo_v1_2.vp",
+      "bytes": 6044,
+      "sha256": "ee3aa91e980fb3dd08231cf1806a28edf759f4ea8248adfd44407d607519b9e4",
+      "baseline_sha256": "ee3aa91e980fb3dd08231cf1806a28edf759f4ea8248adfd44407d607519b9e4",
+      "baseline_bytes": 6044,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_rdatapath_v1_2.vp",
+      "bytes": 5212,
+      "sha256": "72dd8ece021f4ee74fd576c1628c4f7d3606ef632f0e68b9569a288a092a6b0f",
+      "baseline_sha256": "72dd8ece021f4ee74fd576c1628c4f7d3606ef632f0e68b9569a288a092a6b0f",
+      "baseline_bytes": 5212,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_reg_fifo2_v1_2.vp",
+      "bytes": 4818,
+      "sha256": "bc9cff65e4002a51af0c20c2f0a9b9f17dacde5157b58691bbfb1c44348ee08a",
+      "baseline_sha256": "bc9cff65e4002a51af0c20c2f0a9b9f17dacde5157b58691bbfb1c44348ee08a",
+      "baseline_bytes": 4818,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_ui_axi_v1_2a.vp",
+      "bytes": 19885,
+      "sha256": "145b69395412be2553835f9278cdf1cb1703d3beeb914abf7d985e3c69f817fb",
+      "baseline_sha256": "145b69395412be2553835f9278cdf1cb1703d3beeb914abf7d985e3c69f817fb",
+      "baseline_bytes": 19885,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_wdatapath_v1_2.vp",
+      "bytes": 11760,
+      "sha256": "db648e90ff607ca2f9e2b5cca048de417439888d0b906288e0cec7cf038d9dee",
+      "baseline_sha256": "db648e90ff607ca2f9e2b5cca048de417439888d0b906288e0cec7cf038d9dee",
+      "baseline_bytes": 11760,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_wdp_align_v1_2.vp",
+      "bytes": 9722,
+      "sha256": "1645e9eb7fac3c9c13cd3e0d7367f132293f9cec16835ce188c6345993d2b730",
+      "baseline_sha256": "1645e9eb7fac3c9c13cd3e0d7367f132293f9cec16835ce188c6345993d2b730",
+      "baseline_bytes": 9722,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_wdp_dcp_v1_2.vp",
+      "bytes": 9132,
+      "sha256": "3f30be0f49f78f09915743995c950fa6ff8de5f14598ebc8802e73b5c6d140ee",
+      "baseline_sha256": "3f30be0f49f78f09915743995c950fa6ff8de5f14598ebc8802e73b5c6d140ee",
+      "baseline_bytes": 9132,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_wrapper_v1_2b.vp",
+      "bytes": 47013,
+      "sha256": "d35010f49be551fb15ab2655cbeffcaaaa74fdf3ccb0754b033fc979d615e805",
+      "baseline_sha256": "d35010f49be551fb15ab2655cbeffcaaaa74fdf3ccb0754b033fc979d615e805",
+      "baseline_bytes": 47013,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_com_timing_v1_2.vp",
+      "bytes": 6636,
+      "sha256": "e3f19c4be6352ab64f07426973387f2876c540ee992f6eac9d3f2d470b3d49c2",
+      "baseline_sha256": "e3f19c4be6352ab64f07426973387f2876c540ee992f6eac9d3f2d470b3d49c2",
+      "baseline_bytes": 6636,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_tfaw_timing_v1_2.vp",
+      "bytes": 8738,
+      "sha256": "c632619f042bebb4f059df7f20eee90eb2b51b81210430cb37d01958ad3cd30f",
+      "baseline_sha256": "c632619f042bebb4f059df7f20eee90eb2b51b81210430cb37d01958ad3cd30f",
+      "baseline_bytes": 8738,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_tfaw_v1_2.vp",
+      "bytes": 4074,
+      "sha256": "ab87b7718bffc4fb2a2b27765576187f09b5266bbca7fc393c43c6dec96ff379",
+      "baseline_sha256": "ab87b7718bffc4fb2a2b27765576187f09b5266bbca7fc393c43c6dec96ff379",
+      "baseline_bytes": 4074,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_act2wr_pass_v1_2.vp",
+      "bytes": 7642,
+      "sha256": "1b3874b059923481f292ba382ad156f7dcdd9ad39da6c86dddd480290ccce498",
+      "baseline_sha256": "1b3874b059923481f292ba382ad156f7dcdd9ad39da6c86dddd480290ccce498",
+      "baseline_bytes": 7642,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_act_pass_v1_2.vp",
+      "bytes": 5892,
+      "sha256": "9f32b6936e039c15f7b07b74480179d39d1b3787965e1b90bd067a7ede7fdd4c",
+      "baseline_sha256": "9f32b6936e039c15f7b07b74480179d39d1b3787965e1b90bd067a7ede7fdd4c",
+      "baseline_bytes": 5892,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_pre_pass_v1_2.vp",
+      "bytes": 10248,
+      "sha256": "e40a64caec9725c231cd88dde69973eab3aca38c9d2e66a2c5c0bbddf3103ae0",
+      "baseline_sha256": "e40a64caec9725c231cd88dde69973eab3aca38c9d2e66a2c5c0bbddf3103ae0",
+      "baseline_bytes": 10248,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_rd_pass_v1_2.vp",
+      "bytes": 8652,
+      "sha256": "78b1de719a43ee0fc80e1a5464f7284439d91f1d4b3f83ef2ae5611920293988",
+      "baseline_sha256": "78b1de719a43ee0fc80e1a5464f7284439d91f1d4b3f83ef2ae5611920293988",
+      "baseline_bytes": 8652,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_ref_pass_v1_2.vp",
+      "bytes": 5672,
+      "sha256": "c79dde6f9a682c55aff7bb89c4863f76a069b874fb154dff7d3e4d4a7a88f9d1",
+      "baseline_sha256": "c79dde6f9a682c55aff7bb89c4863f76a069b874fb154dff7d3e4d4a7a88f9d1",
+      "baseline_bytes": 5672,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_wr_pass_v1_2.vp",
+      "bytes": 8626,
+      "sha256": "ea3470ca984554d4908ec950314f9242042417c6c4c6b3fd05ac5d6daab98c90",
+      "baseline_sha256": "ea3470ca984554d4908ec950314f9242042417c6c4c6b3fd05ac5d6daab98c90",
+      "baseline_bytes": 8626,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_trc_timing_v1_2.vp",
+      "bytes": 10424,
+      "sha256": "7234241e5968f91ec6e396794f0bb80f6c7d1bca2038aa004d5078d3937953da",
+      "baseline_sha256": "7234241e5968f91ec6e396794f0bb80f6c7d1bca2038aa004d5078d3937953da",
+      "baseline_bytes": 10424,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/distributed_fifo/ips2l_distributed_fifo_v1_0.vp",
+      "bytes": 7838,
+      "sha256": "d6c0b0d8560b0f22128b4883933944fc686fd7597cfea0d6c545cc6af56c0b7a",
+      "baseline_sha256": "d6c0b0d8560b0f22128b4883933944fc686fd7597cfea0d6c545cc6af56c0b7a",
+      "baseline_bytes": 7838,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/distributed_fifo/rtl/ips2l_distributed_fifo_ctr_v1_0.vp",
+      "bytes": 18809,
+      "sha256": "fe31c8f44bea653ab20bb1830ad4f8ed41566e9cfef354bd5e2d48c7682f353d",
+      "baseline_sha256": "fe31c8f44bea653ab20bb1830ad4f8ed41566e9cfef354bd5e2d48c7682f353d",
+      "baseline_bytes": 18809,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/distributed_fifo/rtl/ips2l_distributed_fifo_v1_0_distributed_fifo_v1_0.vp",
+      "bytes": 7708,
+      "sha256": "867ac91a1485dfe613a81f372d788e784bba8cd4b0497e56986135e92685ba73",
+      "baseline_sha256": "867ac91a1485dfe613a81f372d788e784bba8cd4b0497e56986135e92685ba73",
+      "baseline_bytes": 7708,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/distributed_fifo/rtl/ips2l_distributed_sdpram_v1_0_distributed_fifo_v1_0.vp",
+      "bytes": 6854,
+      "sha256": "3561bbbbd4e4432a538c3d20818d262b4f1e5517c48296f6b1b4cc8afdd19aef",
+      "baseline_sha256": "3561bbbbd4e4432a538c3d20818d262b4f1e5517c48296f6b1b4cc8afdd19aef",
+      "baseline_bytes": 6854,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/DDR_200H.v",
+      "bytes": 22194,
+      "sha256": "740e07a2b9320f6ace16b0a475b96a2745126f9d9efb2aa3a2f77e9dc69a4e29",
+      "baseline_sha256": "740e07a2b9320f6ace16b0a475b96a2745126f9d9efb2aa3a2f77e9dc69a4e29",
+      "baseline_bytes": 22194,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/DDR_200H_ddrphy_top.v",
+      "bytes": 53204,
+      "sha256": "1a6c278d122f45466beee6827ef4c53ecfef927141ed184062ef3ca55c34ddee",
+      "baseline_sha256": "1a6c278d122f45466beee6827ef4c53ecfef927141ed184062ef3ca55c34ddee",
+      "baseline_bytes": 53204,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/DDR_200H_slice_top_v1_10.v",
+      "bytes": 55690,
+      "sha256": "771570756d354c81246597556a0b9f38e39f8d363aef5674680629d984c03095",
+      "baseline_sha256": "771570756d354c81246597556a0b9f38e39f8d363aef5674680629d984c03095",
+      "baseline_bytes": 55690,
+      "roles": [
+        "idf_source"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/include/fir1_coeff.svh",
+      "bytes": 2825,
+      "sha256": "e4c1c05149524f523ffe87f5851f0dfcddb9d5934ecc2fcbba89acbe1f1304dc",
+      "baseline_sha256": "e4c1c05149524f523ffe87f5851f0dfcddb9d5934ecc2fcbba89acbe1f1304dc",
+      "baseline_bytes": 2825,
+      "roles": [
+        "recursive_include"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/raw_v105/include/fir2_coeff.svh",
+      "bytes": 5732,
+      "sha256": "8ff28ab11966f5187a33ba902672017cb1f89bcbf8b4108c5d1b6c6856295045",
+      "baseline_sha256": "8ff28ab11966f5187a33ba902672017cb1f89bcbf8b4108c5d1b6c6856295045",
+      "baseline_bytes": 5732,
+      "roles": [
+        "recursive_include"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/delivery/rtl/video/meeting_ddr_instance.vh",
+      "bytes": 5669,
+      "sha256": "52bc2229d39a1fc98fe22cb85d8002be2a5acc5eeb18d005bb3d8995cf584911",
+      "baseline_sha256": "52bc2229d39a1fc98fe22cb85d8002be2a5acc5eeb18d005bb3d8995cf584911",
+      "baseline_bytes": 5669,
+      "roles": [
+        "recursive_include"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rtl/rv32_imem_init_param.v",
+      "bytes": 246727,
+      "sha256": "6c4a13ad59dfbd02cae24c80fcf80c90673b00713caa4410bca0b730ef9c78d1",
+      "baseline_sha256": "6c4a13ad59dfbd02cae24c80fcf80c90673b00713caa4410bca0b730ef9c78d1",
+      "baseline_bytes": 246727,
+      "roles": [
+        "recursive_include"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rtl/rv32_dmem_init_param.v",
+      "bytes": 246525,
+      "sha256": "2ee4320ca5b02fbf452fb748fa1080b72c384975f5995cd0a8ec3867e1b8d878",
+      "baseline_sha256": "2ee4320ca5b02fbf452fb748fa1080b72c384975f5995cd0a8ec3867e1b8d878",
+      "baseline_bytes": 246525,
+      "roles": [
+        "recursive_include"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/imem.hex",
+      "bytes": 163840,
+      "sha256": "3c34b18b8977adce2f6ed67dab4e5dd18be4e78fe2eab5ef94fcd4a832d71a78",
+      "baseline_sha256": "3c34b18b8977adce2f6ed67dab4e5dd18be4e78fe2eab5ef94fcd4a832d71a78",
+      "baseline_bytes": 163840,
+      "roles": [
+        "firmware_hex_provenance"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/dmem.hex",
+      "bytes": 163840,
+      "sha256": "ff0318227058f01ac65a2d3f1f74a384a0c5ad50fe01bdf0564afab4e3055799",
+      "baseline_sha256": "ff0318227058f01ac65a2d3f1f74a384a0c5ad50fe01bdf0564afab4e3055799",
+      "baseline_bytes": 163840,
+      "roles": [
+        "firmware_hex_provenance"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/current_run/owned_constraints/1_pins_DDR_SSTL15_DRIVE8p9_UNCHANGED.fdc",
+      "bytes": 52391,
+      "sha256": "761c49e614aa732b14d2838a793a73689dd2cb933b46f82574171c89cf85e578",
+      "baseline_sha256": "761c49e614aa732b14d2838a793a73689dd2cb933b46f82574171c89cf85e578",
+      "baseline_bytes": 52391,
+      "roles": [
+        "original_constraint"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/current_run/owned_constraints/2_base_timing_LOCK_SCOPE_UNCHANGED.fdc",
+      "bytes": 13298,
+      "sha256": "5f81d73e97ea3ba167459d4d3fbc6e507df5c22d9be6fa4698d4b4739608a8c1",
+      "baseline_sha256": "5f81d73e97ea3ba167459d4d3fbc6e507df5c22d9be6fa4698d4b4739608a8c1",
+      "baseline_bytes": 13298,
+      "roles": [
+        "original_constraint"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/current_run/owned_constraints/3_original_SYN_raw_gray_plus_first_D_UNCHANGED.scf",
+      "bytes": 6463,
+      "sha256": "32570d4248b3a5d231ba23c691242945f32bee3c080af08ed3aa0a7382ee1607",
+      "baseline_sha256": "32570d4248b3a5d231ba23c691242945f32bee3c080af08ed3aa0a7382ee1607",
+      "baseline_bytes": 6463,
+      "roles": [
+        "original_constraint"
+      ],
+      "changed_for_portability": false
+    },
+    {
+      "path": "payload/current_run/owned_constraints/4_existing_MAP_raw_cells_plus_first_D_UNCHANGED.scf",
+      "bytes": 6435,
+      "sha256": "f6ddce3bd78c8c121f491595f12edbf2e30a353d8bf75c950bc3bd5f208fde36",
+      "baseline_sha256": "f6ddce3bd78c8c121f491595f12edbf2e30a353d8bf75c950bc3bd5f208fde36",
+      "baseline_bytes": 6435,
+      "roles": [
+        "original_constraint"
+      ],
+      "changed_for_portability": false
+    }
+  ],
+  "source_content_sha256": "7f0c1b9d4d5b2d5398547a1ec7dc3cfc662a348d08519e671dd1d0819bc14cf8",
+  "content_hash_algorithm": "sha256 of UTF-8 sorted(path + SPACE + sha256 + LF), only files in this manifest",
+  "portability_edits": [
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rv32_imem.idf",
+      "change": "Replace one unused absolute INIT_FILE metadata path with its relative hex filename; instantiated c_INIT_FILE remains NONE.",
+      "baseline_sha256": "2f7a15b79ccad758ed624bdd26eb7d29b61d253d36a23298744de1544d542710",
+      "published_sha256": "b3f514e073e4a6f06d83531e2adcdb4ff1b509630fb09b9247d886a3d09dc018"
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rv32_dmem.idf",
+      "change": "Replace one unused absolute INIT_FILE metadata path with its relative hex filename; instantiated c_INIT_FILE remains NONE.",
+      "baseline_sha256": "5729d917845c6b2dca7c4869f0c7c19f779e9ae4884ac1c2f03f417a2ebfddbd",
+      "published_sha256": "e8466f2296159745979b6bf0a308503e767bb69d5510913e5f49c375d2256271"
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rv32_imem.v",
+      "change": "Replace one unused absolute INIT_FILE metadata path with its relative hex filename; instantiated c_INIT_FILE remains NONE.",
+      "baseline_sha256": "61c4c1b37e4c33d4bdce0756f1032f6fc023c80f4f698e6d4c37da1e0ef06841",
+      "published_sha256": "709d2c4bd7df11da5e8a254fa4f7c46744436c7cef60391ed77643d35463edeb"
+    },
+    {
+      "path": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rv32_dmem.v",
+      "change": "Replace one unused absolute INIT_FILE metadata path with its relative hex filename; instantiated c_INIT_FILE remains NONE.",
+      "baseline_sha256": "381b285ff9fc86974726f62351f36d0b28539876d0e9a71cf611d83b86adda2a",
+      "published_sha256": "915f4689ad04ab53a4260d6a2e9947b9f23da49a7d0678b08231a1c68c09caaf"
+    }
+  ],
+  "idf_closures": [
+    {
+      "idf": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rv32_imem.idf",
+      "active_child_count": 3,
+      "children": [
+        "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rtl/ipm2l_rom_v1_8_rv32_imem.v",
+        "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rtl/ipm2l_spram_v1_8_rv32_imem.v",
+        "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rv32_imem.v"
+      ]
+    },
+    {
+      "idf": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rv32_dmem.idf",
+      "active_child_count": 2,
+      "children": [
+        "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rtl/ipm2l_sdpram_v1_10_rv32_dmem.v",
+        "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rv32_dmem.v"
+      ]
+    },
+    {
+      "idf": "payload/delivery/vendor/mini200_ddr/DDR_200H/DDR_200H.idf",
+      "active_child_count": 74,
+      "children": [
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ips2l_rst_sync_v1_3.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_wrlvl_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_wrcal_v1_7.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_wdata_path_adj_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_upcal_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_training_ctrl_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_slice_rddata_align_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_reset_ctrl_v1_3.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_rdcal_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_main_ctrl_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_init_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_info_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_gatecal_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_gate_update_ctrl_v1_3.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_eyecal_v1_5.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_drift_ctrl_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dqsi_rdel_cal_v1_3.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dqs_rddata_align_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dqs_gate_coarse_cal_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dll_update_ctrl_v1_3.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_dfi_v1_3.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_gpll_phase_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_data_slice_wrlvl_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_data_slice_wrcal_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_data_slice_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_data_slice_dqs_gate_cal_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_cpd_ctrl_v1_3.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_cpd_lock_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_control_path_adj_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_calib_top_v1_10.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_calib_mux_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_rst_debounce_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/ips2l_ddrphy_rst_clk_phase_adj_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/pll/ips2l_ddrphy_gpll_v1_3.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/pll/ips2l_ddrphy_ppll_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_apb_cross_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_calib_delay_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_cfg_apb_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcd_bm_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcd_rowaddr_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcd_sm_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcd_top_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcp_back_ctrl_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcp_buf_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcp_out_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dcp_top_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_dfi_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_lp_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_mrs_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_prefetch_fifo_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_rdatapath_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_reg_fifo2_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_ui_axi_v1_2a.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_wdatapath_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_wdp_align_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_wdp_dcp_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/ips2l_mcdq_wrapper_v1_2b.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_com_timing_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_tfaw_timing_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_tfaw_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_act2wr_pass_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_act_pass_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_pre_pass_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_rd_pass_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_ref_pass_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_timing_wr_pass_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/syn_mod/ips2l_mcdq_trc_timing_v1_2.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/distributed_fifo/ips2l_distributed_fifo_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/distributed_fifo/rtl/ips2l_distributed_fifo_ctr_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/distributed_fifo/rtl/ips2l_distributed_fifo_v1_0_distributed_fifo_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/mcdq_ctrl/distributed_fifo/rtl/ips2l_distributed_sdpram_v1_0_distributed_fifo_v1_0.vp",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/DDR_200H.v",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/DDR_200H_ddrphy_top.v",
+        "payload/delivery/vendor/mini200_ddr/DDR_200H/rtl/ddrphy/DDR_200H_slice_top_v1_10.v"
+      ]
+    }
+  ],
+  "include_edges": [
+    {
+      "from": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/fir_decimator.sv",
+      "include": "fir1_coeff.svh",
+      "resolved": "payload/raw_v105/include/fir1_coeff.svh"
+    },
+    {
+      "from": "payload/delivery/vendor/MEMS_Array_wrapper/rtl/fir_decimator.sv",
+      "include": "fir2_coeff.svh",
+      "resolved": "payload/raw_v105/include/fir2_coeff.svh"
+    },
+    {
+      "from": "payload/video_source_pacing/rtl/meeting_video_subsystem.sv",
+      "include": "meeting_ddr_instance.vh",
+      "resolved": "payload/delivery/rtl/video/meeting_ddr_instance.vh"
+    },
+    {
+      "from": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rtl/ipm2l_spram_v1_8_rv32_imem.v",
+      "include": "rv32_imem_init_param.v",
+      "resolved": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_imem/rtl/rv32_imem_init_param.v"
+    },
+    {
+      "from": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rtl/ipm2l_sdpram_v1_10_rv32_dmem.v",
+      "include": "rv32_dmem_init_param.v",
+      "resolved": "payload/video_source_pacing/combined_r4_6m/native_memory/rv32_dmem/rtl/rv32_dmem_init_param.v"
+    }
+  ],
+  "excluded": [
+    "Private original path manifests, audit logs and process records",
+    "EDA executables, credentials and licenses",
+    "Bitstreams and ADF/MAP/place-route databases",
+    "Unrelated user configuration",
+    "IP output/example groups not active source dependencies"
+  ],
+  "validation_scope": "Copied source integrity and dependency closure only; no new EDA build, timing signoff or hardware acceptance"
+}
